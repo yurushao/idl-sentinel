@@ -1,0 +1,44 @@
+{
+  "name": "idl-sentinel",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "next lint",
+    "type-check": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@coral-xyz/anchor": "^0.29.0",
+    "@radix-ui/react-slot": "^1.2.3",
+    "@solana/web3.js": "^1.87.6",
+    "@supabase/supabase-js": "^2.38.4",
+    "@tanstack/react-query": "^5.8.4",
+    "bs58": "^5.0.0",
+    "class-variance-authority": "^0.7.0",
+    "clsx": "^2.0.0",
+    "lucide-react": "^0.294.0",
+    "next": "16.0.1",
+    "pako": "^2.1.0",
+    "react": "19.2.0",
+    "react-diff-viewer": "^3.1.1",
+    "react-dom": "19.2.0",
+    "react-hook-form": "^7.48.2",
+    "tailwind-merge": "^2.1.0",
+    "zod": "^3.22.4"
+  },
+  "devDependencies": {
+    "@types/node": "^20",
+    "@types/pako": "^2.0.0",
+    "@types/react": "^19",
+    "@types/react-dom": "^19",
+    "autoprefixer": "^10.4.21",
+    "babel-plugin-react-compiler": "1.0.0",
+    "eslint": "^9",
+    "eslint-config-next": "16.0.1",
+    "postcss": "^8.5.6",
+    "tailwindcss": "^3.4.0",
+    "typescript": "^5"
+  }
+}
