@@ -2,7 +2,7 @@
   "crons": [
     {
       "path": "/api/cron/monitor-idls",
-      "schedule": "*/2 * * * *"
+      "schedule": "*/15 * * * *"
     }
   ]
 }
