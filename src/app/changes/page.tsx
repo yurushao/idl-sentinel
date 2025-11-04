@@ -1,4 +1,5 @@
 import { Layout } from '@/components/layout/layout'
+import { ChangeSummary } from '@/components/changes/change-summary'
 import { ChangesList } from '@/components/changes/changes-list'
 
 export default function ChangesPage() {
@@ -11,8 +12,15 @@ export default function ChangesPage() {
             View all detected IDL changes across your monitored programs
           </p>
         </div>
-        
-        <ChangesList />
+
+        {/* Change Summary Section */}
+        <ChangeSummary />
+
+        {/* Changes List Section */}
+        <div>
+          <h2 className="text-xl font-semibold mb-4">All Changes</h2>
+          <ChangesList />
+        </div>
       </div>
     </Layout>
   )

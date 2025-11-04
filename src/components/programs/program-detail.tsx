@@ -38,7 +38,7 @@ interface Snapshot {
   program_id: string
   idl_hash: string
   idl_content: any
-  created_at: string
+  fetched_at: string
 }
 
 interface Change {
@@ -47,9 +47,9 @@ interface Change {
   snapshot_id: string
   change_type: string
   severity: 'low' | 'medium' | 'high' | 'critical'
-  summary: string
-  details: any
-  created_at: string
+  change_summary: string
+  change_details: any
+  detected_at: string
 }
 
 interface ProgramDetailProps {
@@ -225,22 +225,13 @@ export function ProgramDetail({ programId }: ProgramDetailProps) {
     <div className="space-y-8">
       {/* Header */}
       <div className="flex items-center justify-between">
-        <div className="flex items-center gap-4">
-          <Button variant="ghost" size="sm" asChild>
-            <Link href="/programs">
-              <ArrowLeft className="h-4 w-4 mr-2" />
-              Back to Programs
-            </Link>
-          </Button>
-          
-          <div>
-            <h1 className="text-3xl font-bold tracking-tight">{program.name}</h1>
-            <p className="text-muted-foreground">
-              {program.description || 'No description provided'}
-            </p>
-          </div>
-        </div>
-        
+        <Button variant="ghost" size="sm" asChild>
+          <Link href="/programs">
+            <ArrowLeft className="h-4 w-4 mr-2" />
+            Back to Programs
+          </Link>
+        </Button>
+
         <div className="flex items-center gap-2">
           <Button
             variant="outline"
@@ -251,14 +242,14 @@ export function ProgramDetail({ programId }: ProgramDetailProps) {
             <RefreshCw className={`h-4 w-4 mr-2 ${refreshing ? 'animate-spin' : ''}`} />
             Refresh
           </Button>
-          
+
           <Button variant="outline" size="sm" asChild>
             <Link href={`/programs/${programId}/edit`}>
               <Edit className="h-4 w-4 mr-2" />
               Edit
             </Link>
           </Button>
-          
+
           <Button
             variant="outline"
             size="sm"
@@ -282,10 +273,29 @@ export function ProgramDetail({ programId }: ProgramDetailProps) {
         <CardContent className="space-y-4">
           <div className="grid gap-4 md:grid-cols-2">
             <div>
+              <label className="text-sm font-medium text-muted-foreground">Name</label>
+              <p className="text-sm mt-1">{program.name}</p>
+            </div>
+
+            <div>
+              <label className="text-sm font-medium text-muted-foreground">Status</label>
+              <div className="mt-1">
+                <Badge variant={program.is_active ? "default" : "secondary"}>
+                  {program.is_active ? 'Active' : 'Inactive'}
+                </Badge>
+              </div>
+            </div>
+
+            <div className="md:col-span-2">
+              <label className="text-sm font-medium text-muted-foreground">Description</label>
+              <p className="text-sm mt-1">{program.description || 'No description provided'}</p>
+            </div>
+
+            <div className="md:col-span-2">
               <label className="text-sm font-medium text-muted-foreground">Program ID</label>
               <div className="flex items-center gap-2 mt-1">
-                <code className="text-sm bg-muted px-2 py-1 rounded">
-                  {truncateString(program.program_id, 20)}
+                <code className="text-sm bg-muted px-2 py-1 rounded break-all">
+                  {program.program_id}
                 </code>
                 <Button
                   variant="ghost"
@@ -305,21 +315,12 @@ export function ProgramDetail({ programId }: ProgramDetailProps) {
                 </Button>
               </div>
             </div>
-            
-            <div>
-              <label className="text-sm font-medium text-muted-foreground">Status</label>
-              <div className="mt-1">
-                <Badge variant={program.is_active ? "default" : "secondary"}>
-                  {program.is_active ? 'Active' : 'Inactive'}
-                </Badge>
-              </div>
-            </div>
-            
+
             <div>
               <label className="text-sm font-medium text-muted-foreground">Created</label>
               <p className="text-sm mt-1">{formatRelativeTime(program.created_at)}</p>
             </div>
-            
+
             <div>
               <label className="text-sm font-medium text-muted-foreground">Last Updated</label>
               <p className="text-sm mt-1">{formatRelativeTime(program.updated_at)}</p>
@@ -353,7 +354,7 @@ export function ProgramDetail({ programId }: ProgramDetailProps) {
                         {truncateString(snapshot.idl_hash, 12)}
                       </code>
                       <p className="text-xs text-muted-foreground mt-1">
-                        {formatRelativeTime(snapshot.created_at)}
+                        {formatRelativeTime(snapshot.fetched_at)}
                       </p>
                     </div>
                     <Button
@@ -404,22 +405,24 @@ export function ProgramDetail({ programId }: ProgramDetailProps) {
                         <span className="ml-1 capitalize">{change.severity}</span>
                       </Badge>
                       <span className="text-xs text-muted-foreground">
-                        {formatRelativeTime(change.created_at)}
+                        {formatRelativeTime(change.detected_at)}
                       </span>
                     </div>
-                    
+
                     <div>
                       <p className="text-sm font-medium">{change.change_type}</p>
                       <p className="text-xs text-muted-foreground">
-                        {change.summary}
+                        {change.change_summary}
                       </p>
                     </div>
                   </div>
                 ))}
                 
                 {changes.length > 5 && (
-                  <Button variant="outline" size="sm" className="w-full">
-                    View All {changes.length} Changes
+                  <Button variant="outline" size="sm" className="w-full" asChild>
+                    <Link href="/changes">
+                      View All {changes.length} Changes
+                    </Link>
                   </Button>
                 )}
               </div>

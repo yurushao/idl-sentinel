@@ -1,12 +1,12 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useMemo } from 'react'
 import Link from 'next/link'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { formatRelativeTime, truncateString, debounce } from '@/lib/utils'
+import { formatRelativeTime, truncateString } from '@/lib/utils'
 import { Plus, Search, Eye, Edit, Trash2 } from 'lucide-react'
 
 interface MonitoredProgram {
@@ -21,30 +21,32 @@ interface MonitoredProgram {
 
 export function ProgramsList() {
   const [programs, setPrograms] = useState<MonitoredProgram[]>([])
-  const [filteredPrograms, setFilteredPrograms] = useState<MonitoredProgram[]>([])
   const [loading, setLoading] = useState(true)
   const [searchTerm, setSearchTerm] = useState('')
+  const [debouncedSearchTerm, setDebouncedSearchTerm] = useState('')
 
   useEffect(() => {
     fetchPrograms()
   }, [])
 
   useEffect(() => {
-    const debouncedFilter = debounce(() => {
-      if (!searchTerm.trim()) {
-        setFilteredPrograms(programs)
-      } else {
-        const filtered = programs.filter(program =>
-          program.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          program.program_id.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          (program.description && program.description.toLowerCase().includes(searchTerm.toLowerCase()))
-        )
-        setFilteredPrograms(filtered)
-      }
+    const handler = setTimeout(() => {
+      setDebouncedSearchTerm(searchTerm)
     }, 300)
 
-    debouncedFilter()
-  }, [searchTerm, programs])
+    return () => clearTimeout(handler)
+  }, [searchTerm])
+
+  const filteredPrograms = useMemo(() => {
+    if (!debouncedSearchTerm.trim()) {
+      return programs
+    }
+    return programs.filter(program =>
+      program.name.toLowerCase().includes(debouncedSearchTerm.toLowerCase()) ||
+      program.program_id.toLowerCase().includes(debouncedSearchTerm.toLowerCase()) ||
+      (program.description && program.description.toLowerCase().includes(debouncedSearchTerm.toLowerCase()))
+    )
+  }, [debouncedSearchTerm, programs])
 
   const fetchPrograms = async () => {
     try {
@@ -52,7 +54,6 @@ export function ProgramsList() {
       if (response.ok) {
         const data = await response.json()
         setPrograms(data.programs || [])
-        setFilteredPrograms(data.programs || [])
       }
     } catch (error) {
       console.error('Error fetching programs:', error)
@@ -73,7 +74,6 @@ export function ProgramsList() {
 
       if (response.ok) {
         setPrograms(programs.filter(p => p.id !== programId))
-        setFilteredPrograms(filteredPrograms.filter(p => p.id !== programId))
       } else {
         alert('Failed to delete program')
       }

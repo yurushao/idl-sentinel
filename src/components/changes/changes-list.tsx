@@ -7,15 +7,16 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { formatRelativeTime, getSeverityColor, getSeverityEmoji, truncateString, debounce } from '@/lib/utils'
 import { Search, Filter, ChevronDown, ChevronUp } from 'lucide-react'
+import { ChangeDetails } from './change-details'
 
 interface IdlChange {
   id: string
   program_id: string
   change_type: string
   severity: 'low' | 'medium' | 'high' | 'critical'
-  description: string
-  details?: any
-  created_at: string
+  change_summary: string
+  change_details?: any
+  detected_at: string
   monitored_programs?: {
     name: string
     program_id: string
@@ -28,6 +29,7 @@ export function ChangesList() {
   const [loading, setLoading] = useState(true)
   const [searchTerm, setSearchTerm] = useState('')
   const [severityFilter, setSeverityFilter] = useState<string>('all')
+  const [programFilter, setProgramFilter] = useState<string>('all')
   const [expandedChanges, setExpandedChanges] = useState<Set<string>>(new Set())
 
   useEffect(() => {
@@ -41,10 +43,10 @@ export function ChangesList() {
       // Filter by search term
       if (searchTerm.trim()) {
         filtered = filtered.filter(change =>
-          change.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          change.change_summary.toLowerCase().includes(searchTerm.toLowerCase()) ||
           change.change_type.toLowerCase().includes(searchTerm.toLowerCase()) ||
           change.program_id.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          (change.monitored_programs?.name && 
+          (change.monitored_programs?.name &&
            change.monitored_programs.name.toLowerCase().includes(searchTerm.toLowerCase()))
         )
       }
@@ -54,11 +56,18 @@ export function ChangesList() {
         filtered = filtered.filter(change => change.severity === severityFilter)
       }
 
+      // Filter by program
+      if (programFilter !== 'all') {
+        filtered = filtered.filter(change =>
+          change.monitored_programs?.name === programFilter
+        )
+      }
+
       setFilteredChanges(filtered)
     }, 300)
 
     debouncedFilter()
-  }, [searchTerm, severityFilter, changes])
+  }, [searchTerm, severityFilter, programFilter, changes])
 
   const fetchChanges = async () => {
     try {
@@ -91,6 +100,14 @@ export function ChangesList() {
     { value: 'medium', label: 'Medium' },
     { value: 'high', label: 'High' },
     { value: 'critical', label: 'Critical' },
+  ]
+
+  // Get unique program names
+  const programOptions = [
+    { value: 'all', label: 'All Programs' },
+    ...Array.from(new Set(changes.map(change => change.monitored_programs?.name).filter(Boolean)))
+      .map(name => ({ value: name as string, label: name as string }))
+      .sort((a, b) => a.label.localeCompare(b.label))
   ]
 
   if (loading) {
@@ -148,7 +165,22 @@ export function ChangesList() {
               ))}
             </select>
           </div>
-          
+
+          <div className="relative">
+            <Filter className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
+            <select
+              value={programFilter}
+              onChange={(e) => setProgramFilter(e.target.value)}
+              className="pl-10 pr-4 py-2 border border-input bg-background rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+            >
+              {programOptions.map(option => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
+            </select>
+          </div>
+
           <div className="text-sm text-muted-foreground">
             {filteredChanges.length} of {changes.length} changes
           </div>
@@ -206,7 +238,7 @@ export function ChangesList() {
                         </div>
                         <div className="flex items-center space-x-2">
                           <span className="text-sm text-muted-foreground">
-                            {formatRelativeTime(change.created_at)}
+                            {formatRelativeTime(change.detected_at)}
                           </span>
                           <Button
                             variant="ghost"
@@ -222,21 +254,19 @@ export function ChangesList() {
                           </Button>
                         </div>
                       </div>
-                      
+
                       <p className="text-sm text-muted-foreground mb-2">
-                        {change.description}
+                        {change.change_summary}
                       </p>
-                      
+
                       <p className="text-xs text-muted-foreground font-mono">
                         {truncateString(change.program_id, 40)}
                       </p>
-                      
-                      {isExpanded && change.details && (
-                        <div className="mt-4 p-4 bg-muted rounded-lg">
-                          <h4 className="font-medium mb-2">Change Details</h4>
-                          <pre className="text-xs overflow-x-auto">
-                            {JSON.stringify(change.details, null, 2)}
-                          </pre>
+
+                      {isExpanded && change.change_details && (
+                        <div className="mt-4 p-4 bg-muted/50 rounded-lg">
+                          <h4 className="font-medium mb-3 text-sm">Change Details</h4>
+                          <ChangeDetails details={change.change_details} />
                         </div>
                       )}
                     </div>

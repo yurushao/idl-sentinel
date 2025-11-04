@@ -12,8 +12,8 @@ interface IdlChange {
   program_id: string
   change_type: string
   severity: 'low' | 'medium' | 'high' | 'critical'
-  description: string
-  created_at: string
+  change_summary: string
+  detected_at: string
   monitored_programs?: {
     name: string
     program_id: string
@@ -116,11 +116,11 @@ export function RecentChanges() {
                       </Badge>
                     </div>
                     <span className="text-xs text-muted-foreground">
-                      {formatRelativeTime(change.created_at)}
+                      {formatRelativeTime(change.detected_at)}
                     </span>
                   </div>
                   <p className="text-sm text-muted-foreground mb-2">
-                    {truncateString(change.description, 100)}
+                    {truncateString(change.change_summary, 100)}
                   </p>
                   <p className="text-xs text-muted-foreground font-mono bg-muted px-2 py-1 rounded inline-block">
                     {truncateString(change.program_id, 20)}
