@@ -1,57 +1,57 @@
-'use client'
+"use client";
 
-import { useEffect, useState } from 'react'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { Badge } from '@/components/ui/badge'
-import { AlertCircle, TrendingUp, Activity, Layers } from 'lucide-react'
-import { getSeverityColor } from '@/lib/utils'
+import { useEffect, useState } from "react";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { AlertCircle, TrendingUp, Flag, Layers } from "lucide-react";
+import { getSeverityColor } from "@/lib/utils";
 
 interface ChangeStatistics {
-  total: number
+  total: number;
   bySeverity: {
-    low: number
-    medium: number
-    high: number
-    critical: number
-  }
+    low: number;
+    medium: number;
+    high: number;
+    critical: number;
+  };
   byType: {
-    instruction_added: number
-    instruction_removed: number
-    instruction_modified: number
-    type_added: number
-    type_removed: number
-    type_modified: number
-    account_added: number
-    account_removed: number
-    account_modified: number
-    error_added: number
-    error_removed: number
-    error_modified: number
-  }
-  recent24h: number
+    instruction_added: number;
+    instruction_removed: number;
+    instruction_modified: number;
+    type_added: number;
+    type_removed: number;
+    type_modified: number;
+    account_added: number;
+    account_removed: number;
+    account_modified: number;
+    error_added: number;
+    error_removed: number;
+    error_modified: number;
+  };
+  recent24h: number;
 }
 
 export function ChangeSummary() {
-  const [stats, setStats] = useState<ChangeStatistics | null>(null)
-  const [loading, setLoading] = useState(true)
+  const [stats, setStats] = useState<ChangeStatistics | null>(null);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    fetchStatistics()
-  }, [])
+    fetchStatistics();
+  }, []);
 
   const fetchStatistics = async () => {
     try {
-      const response = await fetch('/api/changes?stats=true')
+      const response = await fetch("/api/changes?stats=true");
       if (response.ok) {
-        const data = await response.json()
-        setStats(data.statistics)
+        const data = await response.json();
+        setStats(data.statistics);
       }
     } catch (error) {
-      console.error('Error fetching statistics:', error)
+      console.error("Error fetching statistics:", error);
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
-  }
+  };
 
   if (loading) {
     return (
@@ -68,17 +68,17 @@ export function ChangeSummary() {
           </Card>
         ))}
       </div>
-    )
+    );
   }
 
   if (!stats) {
-    return null
+    return null;
   }
 
   const topChangeTypes = Object.entries(stats.byType)
     .sort(([, a], [, b]) => b - a)
     .slice(0, 3)
-    .filter(([, count]) => count > 0)
+    .filter(([, count]) => count > 0);
 
   return (
     <div className="space-y-6">
@@ -104,9 +104,7 @@ export function ChangeSummary() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{stats.recent24h}</div>
-            <p className="text-xs text-muted-foreground">
-              Recent activity
-            </p>
+            <p className="text-xs text-muted-foreground">Recent activity</p>
           </CardContent>
         </Card>
 
@@ -119,24 +117,20 @@ export function ChangeSummary() {
             <div className="text-2xl font-bold">
               {stats.bySeverity.critical + stats.bySeverity.high}
             </div>
-            <p className="text-xs text-muted-foreground">
-              Requires attention
-            </p>
+            <p className="text-xs text-muted-foreground">Requires attention</p>
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Medium/Low</CardTitle>
-            <Activity className="h-4 w-4 text-muted-foreground" />
+            <Flag className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
               {stats.bySeverity.medium + stats.bySeverity.low}
             </div>
-            <p className="text-xs text-muted-foreground">
-              Informational
-            </p>
+            <p className="text-xs text-muted-foreground">Informational</p>
           </CardContent>
         </Card>
       </div>
@@ -151,10 +145,15 @@ export function ChangeSummary() {
           <CardContent>
             <div className="space-y-3">
               {Object.entries(stats.bySeverity).map(([severity, count]) => (
-                <div key={severity} className="flex items-center justify-between">
+                <div
+                  key={severity}
+                  className="flex items-center justify-between"
+                >
                   <div className="flex items-center space-x-3">
                     <div
-                      className={`h-3 w-3 rounded-full ${getSeverityColor(severity as any)}`}
+                      className={`h-3 w-3 rounded-full ${getSeverityColor(
+                        severity as any
+                      )}`}
                     />
                     <span className="text-sm capitalize">{severity}</span>
                   </div>
@@ -183,7 +182,7 @@ export function ChangeSummary() {
                 {topChangeTypes.map(([type, count]) => (
                   <div key={type} className="flex items-center justify-between">
                     <Badge variant="outline" className="text-xs">
-                      {type.replace(/_/g, ' ')}
+                      {type.replace(/_/g, " ")}
                     </Badge>
                     <div className="flex items-center space-x-2">
                       <span className="text-sm font-medium">{count}</span>
@@ -197,11 +196,13 @@ export function ChangeSummary() {
                 ))}
               </div>
             ) : (
-              <p className="text-sm text-muted-foreground">No changes detected yet</p>
+              <p className="text-sm text-muted-foreground">
+                No changes detected yet
+              </p>
             )}
           </CardContent>
         </Card>
       </div>
     </div>
-  )
+  );
 }

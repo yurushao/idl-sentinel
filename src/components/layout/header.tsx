@@ -1,18 +1,17 @@
 "use client";
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Monitor, Settings, Activity, Bell } from "lucide-react";
-import { cn } from "@/lib/utils";
-import { WalletMultiButton } from '@solana/wallet-adapter-react-ui';
-import { useAuth } from '@/lib/auth/auth-context';
-import { useWallet } from '@solana/wallet-adapter-react';
-import { Button } from '@/components/ui/button';
+import { Monitor, Settings, Blocks, Bell, Loader2 } from "lucide-react";
+import { WalletMultiButton } from "@solana/wallet-adapter-react-ui";
+import { useAuth } from "@/lib/auth/auth-context";
+import { useWallet } from "@solana/wallet-adapter-react";
+import { Button } from "@/components/ui/button";
 
 const navigation = [
   { name: "Dashboard", href: "/", icon: Monitor },
-  { name: "Programs", href: "/programs", icon: Activity },
+  { name: "Programs", href: "/programs", icon: Blocks },
   { name: "Changes", href: "/changes", icon: Bell },
   { name: "Settings", href: "/settings", icon: Settings },
 ];
@@ -27,7 +26,7 @@ export function Header() {
           <div className="flex items-center space-x-8">
             <Link href="/" className="flex items-center space-x-3">
               <div className="flex items-center space-x-2">
-                <Monitor className="h-5 w-5" />
+                {/* <Monitor className="h-5 w-5" /> */}
                 <div>
                   <span className="text-lg font-semibold">IDL Sentinel</span>
                 </div>
@@ -62,13 +61,57 @@ export function Header() {
 }
 
 function WalletButton() {
-  const { publicKey, connected } = useWallet();
+  const { publicKey, connected, disconnect } = useWallet();
   const { isAuthenticated, signIn, signOut, isLoading } = useAuth();
   const [mounted, setMounted] = useState(false);
+  const [hasAttemptedAutoSignIn, setHasAttemptedAutoSignIn] = useState(false);
+  const previousWalletRef = useRef<string | null>(null);
 
   useEffect(() => {
     setMounted(true);
   }, []);
+
+  // Handle wallet disconnection - sign out from app
+  useEffect(() => {
+    if (!connected && isAuthenticated) {
+      signOut();
+    }
+    if (!connected) {
+      setHasAttemptedAutoSignIn(false);
+      previousWalletRef.current = null;
+    }
+  }, [connected, isAuthenticated, signOut]);
+
+  // Handle wallet switch - re-authenticate with new wallet
+  useEffect(() => {
+    if (mounted && connected && publicKey && isAuthenticated) {
+      const connectedAddress = publicKey.toBase58();
+
+      // If we have a previous wallet and it's different, user switched wallets
+      if (previousWalletRef.current && previousWalletRef.current !== connectedAddress) {
+        console.log('Wallet switched, re-authenticating...');
+        signOut().then(() => {
+          setHasAttemptedAutoSignIn(false);
+          previousWalletRef.current = null;
+        });
+      } else if (!previousWalletRef.current) {
+        // First time authenticating, track this wallet
+        previousWalletRef.current = connectedAddress;
+      }
+    }
+  }, [mounted, connected, publicKey, isAuthenticated, signOut]);
+
+  // Auto sign-in when wallet connects (only once per connection)
+  useEffect(() => {
+    if (mounted && connected && !isAuthenticated && !isLoading && !hasAttemptedAutoSignIn) {
+      setHasAttemptedAutoSignIn(true);
+      signIn().catch((error) => {
+        // If user cancels, disconnect wallet so they can try again
+        console.log('Sign-in cancelled or failed:', error.message || error);
+        disconnect();
+      });
+    }
+  }, [mounted, connected, isAuthenticated, isLoading, hasAttemptedAutoSignIn, signIn, disconnect]);
 
   // Prevent hydration mismatch by not rendering wallet button on server
   if (!mounted) {
@@ -78,27 +121,33 @@ function WalletButton() {
   }
 
   if (!connected) {
-    return <WalletMultiButton />;
+    return (
+      <div className="wallet-button-small">
+        <WalletMultiButton />
+      </div>
+    );
   }
 
-  if (connected && !isAuthenticated && !isLoading) {
+  if (connected && !isAuthenticated && isLoading) {
     return (
-      <Button onClick={signIn} disabled={isLoading}>
-        {isLoading ? 'Signing in...' : 'Sign In'}
+      <Button disabled={true} size="sm">
+        <Loader2 className="h-4 w-4 animate-spin mr-2" />
+        Signing in...
       </Button>
     );
   }
 
   if (isAuthenticated) {
     return (
-      <div className="flex items-center gap-2">
+      <div className="wallet-button-small">
         <WalletMultiButton />
-        <Button onClick={signOut} variant="outline" size="sm">
-          Sign Out
-        </Button>
       </div>
     );
   }
 
-  return <WalletMultiButton />;
+  return (
+    <div className="wallet-button-small">
+      <WalletMultiButton />
+    </div>
+  );
 }

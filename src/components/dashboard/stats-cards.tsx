@@ -1,38 +1,44 @@
-'use client'
+"use client";
 
-import { useEffect, useState } from 'react'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { Activity, AlertTriangle, CheckCircle, Clock, TrendingUp } from 'lucide-react'
+import { useEffect, useState } from "react";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Blocks,
+  AlertTriangle,
+  CheckCircle,
+  Clock,
+  TrendingUp,
+} from "lucide-react";
 
 interface MonitoringStats {
-  totalPrograms: number
-  activePrograms: number
-  totalChanges: number
-  recentChanges: number
-  lastMonitoringRun?: string
+  totalPrograms: number;
+  activePrograms: number;
+  totalChanges: number;
+  recentChanges: number;
+  lastMonitoringRun?: string;
 }
 
 export function StatsCards() {
-  const [stats, setStats] = useState<MonitoringStats | null>(null)
-  const [loading, setLoading] = useState(true)
+  const [stats, setStats] = useState<MonitoringStats | null>(null);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    fetchStats()
-  }, [])
+    fetchStats();
+  }, []);
 
   const fetchStats = async () => {
     try {
-      const response = await fetch('/api/monitoring/stats')
+      const response = await fetch("/api/monitoring/stats");
       if (response.ok) {
-        const data = await response.json()
-        setStats(data.stats)
+        const data = await response.json();
+        setStats(data.stats);
       }
     } catch (error) {
-      console.error('Error fetching stats:', error)
+      console.error("Error fetching stats:", error);
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
-  }
+  };
 
   if (loading) {
     return (
@@ -40,7 +46,9 @@ export function StatsCards() {
         {[...Array(4)].map((_, i) => (
           <Card key={i}>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground">Loading...</CardTitle>
+              <CardTitle className="text-sm font-medium text-muted-foreground">
+                Loading...
+              </CardTitle>
               <div className="h-4 w-4 rounded bg-muted animate-pulse" />
             </CardHeader>
             <CardContent>
@@ -50,7 +58,7 @@ export function StatsCards() {
           </Card>
         ))}
       </div>
-    )
+    );
   }
 
   if (!stats) {
@@ -58,18 +66,22 @@ export function StatsCards() {
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium text-destructive">Error</CardTitle>
+            <CardTitle className="text-sm font-medium text-destructive">
+              Error
+            </CardTitle>
             <AlertTriangle className="h-4 w-4 text-destructive" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-destructive">Failed to load</div>
+            <div className="text-2xl font-bold text-destructive">
+              Failed to load
+            </div>
             <p className="text-xs text-muted-foreground">
               Unable to fetch statistics
             </p>
           </CardContent>
         </Card>
       </div>
-    )
+    );
   }
 
   const cardConfigs = [
@@ -77,7 +89,7 @@ export function StatsCards() {
       title: "Total Programs",
       value: stats.totalPrograms ?? 0,
       subtitle: `${stats.activePrograms ?? 0} active`,
-      icon: Activity,
+      icon: Blocks,
     },
     {
       title: "Active Programs",
@@ -96,13 +108,13 @@ export function StatsCards() {
       value: stats.recentChanges ?? 0,
       subtitle: "Last 24 hours",
       icon: Clock,
-    }
-  ]
+    },
+  ];
 
   return (
     <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
       {cardConfigs.map((config, index) => {
-        const Icon = config.icon
+        const Icon = config.icon;
         return (
           <Card key={index}>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
@@ -113,15 +125,16 @@ export function StatsCards() {
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">
-                {(typeof config.value === 'number' ? config.value : 0).toLocaleString()}
+                {(typeof config.value === "number"
+                  ? config.value
+                  : 0
+                ).toLocaleString()}
               </div>
-              <p className="text-xs text-muted-foreground">
-                {config.subtitle}
-              </p>
+              <p className="text-xs text-muted-foreground">{config.subtitle}</p>
             </CardContent>
           </Card>
-        )
+        );
       })}
     </div>
-  )
+  );
 }

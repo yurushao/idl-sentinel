@@ -5,6 +5,7 @@ import { useAuth } from '@/lib/auth/auth-context'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
+import { Skeleton } from '@/components/ui/skeleton'
 import { Loader2, Save, TestTube, Check, X, ExternalLink } from 'lucide-react'
 
 interface UserSettings {
@@ -294,12 +295,48 @@ export function UserSettings() {
 
   if (loading || authLoading) {
     return (
-      <Card className="p-6">
-        <div className="flex items-center justify-center">
-          <Loader2 className="h-6 w-6 animate-spin mr-2" />
-          <span>Loading settings...</span>
-        </div>
-      </Card>
+      <div className="space-y-6">
+        {/* Account Information Skeleton */}
+        <Card className="p-6">
+          <Skeleton className="h-7 w-48 mb-4" />
+          <div className="space-y-3">
+            <div>
+              <Skeleton className="h-4 w-32 mb-2" />
+              <Skeleton className="h-10 w-full" />
+            </div>
+          </div>
+        </Card>
+
+        {/* Notification Settings Skeleton */}
+        <Card className="p-6">
+          <Skeleton className="h-7 w-56 mb-2" />
+          <Skeleton className="h-4 w-96 mb-6" />
+
+          <div className="space-y-4">
+            {/* Slack Section */}
+            <div>
+              <Skeleton className="h-5 w-40 mb-2" />
+              <Skeleton className="h-10 w-full mb-3" />
+              <div className="flex gap-2">
+                <Skeleton className="h-10 flex-1" />
+                <Skeleton className="h-10 w-20" />
+              </div>
+            </div>
+
+            {/* Telegram Section */}
+            <div>
+              <Skeleton className="h-5 w-48 mb-2" />
+              <Skeleton className="h-4 w-full mb-4" />
+              <Skeleton className="h-10 w-full" />
+            </div>
+
+            {/* Save Button */}
+            <div className="flex justify-end pt-4">
+              <Skeleton className="h-10 w-36" />
+            </div>
+          </div>
+        </Card>
+      </div>
     )
   }
 

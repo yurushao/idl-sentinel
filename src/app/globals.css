@@ -67,3 +67,20 @@
     @apply bg-background text-foreground;
   }
 }
+
+/* Wallet button customization */
+.wallet-button-small .wallet-adapter-button {
+  height: 2.25rem !important; /* h-9 = 36px */
+  padding-left: 1rem !important;
+  padding-right: 1rem !important;
+  font-size: 0.875rem !important; /* text-sm */
+  font-family: inherit !important; /* Use Geist font */
+}
+
+.wallet-button-small .wallet-adapter-button-trigger {
+  height: 2.25rem !important;
+  padding-left: 1rem !important;
+  padding-right: 1rem !important;
+  font-size: 0.875rem !important;
+  font-family: inherit !important; /* Use Geist font */
+}
