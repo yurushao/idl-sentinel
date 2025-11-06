@@ -95,34 +95,34 @@ export function RecentChanges() {
         ) : (
           <div className="space-y-3">
             {changes.map((change) => (
-              <div key={change.id} className="flex items-start space-x-3 p-3 border rounded-lg hover:bg-muted/50 transition-colors">
-                <div 
-                  className={`h-2 w-2 rounded-full mt-2 ${getSeverityColor(change.severity)}`}
+              <div key={change.id} className="flex items-start gap-2 sm:gap-3 p-3 border rounded-lg hover:bg-muted/50 transition-colors">
+                <div
+                  className={`h-2 w-2 rounded-full mt-2 flex-shrink-0 ${getSeverityColor(change.severity)}`}
                 />
                 <div className="flex-1 min-w-0">
-                  <div className="flex items-center justify-between mb-2">
-                    <div className="flex items-center space-x-2">
+                  <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1 sm:gap-2 mb-2">
+                    <div className="flex flex-wrap items-center gap-2">
                       <span className="font-medium text-sm">
                         {change.monitored_programs?.name || 'Unknown Program'}
                       </span>
                       <Badge variant="outline" className="text-xs">
                         {change.change_type}
                       </Badge>
-                      <Badge 
+                      <Badge
                         variant={change.severity === 'critical' || change.severity === 'high' ? 'destructive' : 'secondary'}
                         className="text-xs"
                       >
                         {change.severity}
                       </Badge>
                     </div>
-                    <span className="text-xs text-muted-foreground">
+                    <span className="text-xs text-muted-foreground whitespace-nowrap">
                       {formatRelativeTime(change.detected_at)}
                     </span>
                   </div>
                   <p className="text-sm text-muted-foreground mb-2">
                     {truncateString(change.change_summary, 100)}
                   </p>
-                  <p className="text-xs text-muted-foreground font-mono bg-muted px-2 py-1 rounded inline-block">
+                  <p className="text-xs text-muted-foreground font-mono bg-muted px-2 py-1 rounded inline-block break-all">
                     {truncateString(change.program_id, 20)}
                   </p>
                 </div>

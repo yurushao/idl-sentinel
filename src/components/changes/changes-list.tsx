@@ -139,24 +139,24 @@ export function ChangesList() {
 
   return (
     <div className="space-y-6">
-      <div className="flex justify-between items-center">
-        <div className="flex items-center space-x-4">
-          <div className="relative">
+      <div className="flex flex-col gap-4">
+        <div className="flex flex-col sm:flex-row gap-3">
+          <div className="relative flex-1">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
             <Input
               placeholder="Search changes..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="pl-10 w-64"
+              className="pl-10 w-full"
             />
           </div>
-          
-          <div className="relative">
+
+          <div className="relative flex-1 sm:flex-initial">
             <Filter className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
             <select
               value={severityFilter}
               onChange={(e) => setSeverityFilter(e.target.value)}
-              className="pl-10 pr-4 py-2 border border-input bg-background rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+              className="pl-10 pr-4 py-2 border border-input bg-background rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-ring w-full sm:w-auto"
             >
               {severityOptions.map(option => (
                 <option key={option.value} value={option.value}>
@@ -166,12 +166,12 @@ export function ChangesList() {
             </select>
           </div>
 
-          <div className="relative">
+          <div className="relative flex-1 sm:flex-initial">
             <Filter className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
             <select
               value={programFilter}
               onChange={(e) => setProgramFilter(e.target.value)}
-              className="pl-10 pr-4 py-2 border border-input bg-background rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+              className="pl-10 pr-4 py-2 border border-input bg-background rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-ring w-full sm:w-auto"
             >
               {programOptions.map(option => (
                 <option key={option.value} value={option.value}>
@@ -180,10 +180,10 @@ export function ChangesList() {
               ))}
             </select>
           </div>
+        </div>
 
-          <div className="text-sm text-muted-foreground">
-            {filteredChanges.length} of {changes.length} changes
-          </div>
+        <div className="text-sm text-muted-foreground">
+          {filteredChanges.length} of {changes.length} changes
         </div>
       </div>
 
@@ -211,33 +211,33 @@ export function ChangesList() {
         <div className="space-y-4">
           {filteredChanges.map((change) => {
             const isExpanded = expandedChanges.has(change.id)
-            
+
             return (
               <Card key={change.id}>
-                <CardContent className="p-6">
-                  <div className="flex items-start space-x-4">
-                    <div 
-                      className={`h-4 w-4 rounded-full mt-1 ${getSeverityColor(change.severity)}`}
+                <CardContent className="p-4 sm:p-6">
+                  <div className="flex items-start gap-3 sm:gap-4">
+                    <div
+                      className={`h-4 w-4 rounded-full mt-1 flex-shrink-0 ${getSeverityColor(change.severity)}`}
                     />
-                    
+
                     <div className="flex-1 min-w-0">
-                      <div className="flex items-center justify-between mb-2">
-                        <div className="flex items-center space-x-3">
+                      <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-2 mb-2">
+                        <div className="flex flex-wrap items-center gap-2">
                           <h3 className="font-semibold">
                             {change.monitored_programs?.name || 'Unknown Program'}
                           </h3>
                           <Badge variant="outline" className="text-xs">
                             {change.change_type}
                           </Badge>
-                          <Badge 
+                          <Badge
                             variant={change.severity === 'critical' || change.severity === 'high' ? 'destructive' : 'secondary'}
                             className="text-xs"
                           >
                             {getSeverityEmoji(change.severity)} {change.severity}
                           </Badge>
                         </div>
-                        <div className="flex items-center space-x-2">
-                          <span className="text-sm text-muted-foreground">
+                        <div className="flex items-center gap-2">
+                          <span className="text-sm text-muted-foreground whitespace-nowrap">
                             {formatRelativeTime(change.detected_at)}
                           </span>
                           <Button
@@ -259,12 +259,12 @@ export function ChangesList() {
                         {change.change_summary}
                       </p>
 
-                      <p className="text-xs text-muted-foreground font-mono">
+                      <p className="text-xs text-muted-foreground font-mono break-all">
                         {truncateString(change.program_id, 40)}
                       </p>
 
                       {isExpanded && change.change_details && (
-                        <div className="mt-4 p-4 bg-muted/50 rounded-lg">
+                        <div className="mt-4 p-3 sm:p-4 bg-muted/50 rounded-lg overflow-auto">
                           <h4 className="font-medium mb-3 text-sm">Change Details</h4>
                           <ChangeDetails details={change.change_details} />
                         </div>

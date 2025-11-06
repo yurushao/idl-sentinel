@@ -67,24 +67,27 @@ export function MonitoredPrograms() {
 
   return (
     <Card>
-      <CardHeader className="flex flex-row items-center justify-between">
-        <div className="flex items-center space-x-2">
-          <Code className="h-4 w-4 text-muted-foreground" />
-          <CardTitle>Monitored Programs</CardTitle>
-        </div>
-        <div className="flex items-center space-x-2">
-          <Link href="/programs">
-            <Button variant="outline" size="sm" className="flex items-center space-x-1">
-              <span>View all</span>
-              <ExternalLink className="h-3 w-3" />
-            </Button>
-          </Link>
-          <Link href="/programs/new">
-            <Button size="sm" className="flex items-center space-x-1">
-              <Plus className="h-3 w-3" />
-              <span>Add Program</span>
-            </Button>
-          </Link>
+      <CardHeader>
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+          <div className="flex items-center space-x-2">
+            <Code className="h-4 w-4 text-muted-foreground" />
+            <CardTitle>Monitored Programs</CardTitle>
+          </div>
+          <div className="flex items-center gap-2">
+            <Link href="/programs" className="flex-1 sm:flex-initial">
+              <Button variant="outline" size="sm" className="flex items-center justify-center space-x-1 w-full">
+                <span className="hidden sm:inline">View all</span>
+                <span className="sm:hidden">All</span>
+                <ExternalLink className="h-3 w-3" />
+              </Button>
+            </Link>
+            <Link href="/programs/new" className="flex-1 sm:flex-initial">
+              <Button size="sm" className="flex items-center justify-center space-x-1 w-full">
+                <Plus className="h-3 w-3" />
+                <span>Add</span>
+              </Button>
+            </Link>
+          </div>
         </div>
       </CardHeader>
       <CardContent>
@@ -103,12 +106,12 @@ export function MonitoredPrograms() {
         ) : (
           <div className="space-y-3">
             {programs.slice(0, 5).map((program) => (
-              <div key={program.id} className="flex items-center justify-between p-3 border rounded-lg hover:bg-muted/50 transition-colors">
+              <div key={program.id} className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 p-3 border rounded-lg hover:bg-muted/50 transition-colors">
                 <div className="flex-1 min-w-0">
-                  <div className="flex items-center space-x-2 mb-2">
+                  <div className="flex flex-wrap items-center gap-2 mb-2">
                     <Activity className={`h-4 w-4 ${program.is_active ? 'text-green-600' : 'text-muted-foreground'}`} />
                     <span className="font-medium">{program.name}</span>
-                    <Badge 
+                    <Badge
                       variant={program.is_active ? "default" : "secondary"}
                     >
                       {program.is_active ? "Active" : "Inactive"}
@@ -120,7 +123,7 @@ export function MonitoredPrograms() {
                     </p>
                   )}
                   <div className="space-y-1">
-                    <p className="text-xs text-muted-foreground font-mono bg-muted px-2 py-1 rounded inline-block">
+                    <p className="text-xs text-muted-foreground font-mono bg-muted px-2 py-1 rounded inline-block break-all">
                       {truncateString(program.program_id, 30)}
                     </p>
                     <p className="text-xs text-muted-foreground">
@@ -128,9 +131,9 @@ export function MonitoredPrograms() {
                     </p>
                   </div>
                 </div>
-                <div className="flex items-center space-x-2 ml-4">
-                  <Link href={`/programs/${program.id}`}>
-                    <Button variant="outline" size="sm">
+                <div className="flex items-center gap-2 sm:ml-4">
+                  <Link href={`/programs/${program.id}`} className="flex-1 sm:flex-initial">
+                    <Button variant="outline" size="sm" className="w-full">
                       View
                     </Button>
                   </Link>
@@ -139,8 +142,8 @@ export function MonitoredPrograms() {
             ))}
             {programs.length > 5 && (
               <div className="text-center pt-4">
-                <Link href="/programs">
-                  <Button variant="outline">
+                <Link href="/programs" className="block sm:inline-block">
+                  <Button variant="outline" className="w-full sm:w-auto">
                     View all {programs.length} programs
                   </Button>
                 </Link>

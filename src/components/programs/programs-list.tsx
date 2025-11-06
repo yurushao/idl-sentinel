@@ -115,15 +115,15 @@ export function ProgramsList() {
 
   return (
     <div className="space-y-6">
-      <div className="flex justify-between items-center">
-        <div className="flex items-center space-x-4">
-          <div className="relative">
+      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4">
+        <div className="flex flex-col sm:flex-row sm:items-center gap-4 flex-1">
+          <div className="relative flex-1 sm:flex-initial">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
             <Input
               placeholder="Search programs..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="pl-10 w-64"
+              className="pl-10 w-full sm:w-64"
             />
           </div>
           <div className="text-sm text-muted-foreground">
@@ -132,8 +132,8 @@ export function ProgramsList() {
         </div>
 
         {isAdmin && (
-          <Link href="/programs/new">
-            <Button className="flex items-center space-x-2">
+          <Link href="/programs/new" className="w-full sm:w-auto">
+            <Button className="flex items-center justify-center space-x-2 w-full sm:w-auto">
               <Plus className="h-4 w-4" />
               <span>Add Program</span>
             </Button>
@@ -176,37 +176,37 @@ export function ProgramsList() {
         <div className="grid gap-4">
           {filteredPrograms.map((program) => (
             <Card key={program.id}>
-              <CardContent className="p-6">
-                <div className="flex items-start justify-between">
+              <CardContent className="p-4 sm:p-6">
+                <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
                   <div className="flex-1 min-w-0">
-                    <div className="flex items-center space-x-3 mb-2">
+                    <div className="flex flex-wrap items-center gap-2 mb-2">
                       <h3 className="text-lg font-semibold">{program.name}</h3>
                       <Badge variant={program.is_active ? "default" : "secondary"}>
                         {program.is_active ? "Active" : "Inactive"}
                       </Badge>
                     </div>
-                    
+
                     {program.description && (
                       <p className="text-muted-foreground mb-3">
                         {program.description}
                       </p>
                     )}
-                    
+
                     <div className="space-y-1">
-                      <div className="flex items-center space-x-2 text-sm">
+                      <div className="flex flex-col sm:flex-row sm:items-center sm:space-x-2 text-sm">
                         <span className="text-muted-foreground">Program ID:</span>
-                        <code className="bg-muted px-2 py-1 rounded text-xs font-mono">
+                        <code className="bg-muted px-2 py-1 rounded text-xs font-mono break-all">
                           {program.program_id}
                         </code>
                       </div>
-                      <div className="flex items-center space-x-4 text-xs text-muted-foreground">
+                      <div className="flex flex-col sm:flex-row sm:items-center sm:space-x-4 text-xs text-muted-foreground gap-1 sm:gap-0">
                         <span>Added {formatRelativeTime(program.created_at)}</span>
                         <span>Updated {formatRelativeTime(program.updated_at)}</span>
                       </div>
                     </div>
                   </div>
-                  
-                  <div className="flex items-center space-x-2 ml-4">
+
+                  <div className="flex flex-wrap items-center gap-2 sm:ml-4">
                     <AddToWatchlistButton
                       programId={program.program_id}
                       programDbId={program.id}
@@ -216,7 +216,7 @@ export function ProgramsList() {
                     <Link href={`/programs/${program.id}`}>
                       <Button variant="outline" size="sm" className="flex items-center space-x-1">
                         <Eye className="h-3 w-3" />
-                        <span>View</span>
+                        <span className="hidden sm:inline">View</span>
                       </Button>
                     </Link>
                     {isAdmin && (
@@ -224,7 +224,7 @@ export function ProgramsList() {
                         <Link href={`/programs/${program.id}/edit`}>
                           <Button variant="outline" size="sm" className="flex items-center space-x-1">
                             <Edit className="h-3 w-3" />
-                            <span>Edit</span>
+                            <span className="hidden sm:inline">Edit</span>
                           </Button>
                         </Link>
                         <Button
@@ -234,7 +234,7 @@ export function ProgramsList() {
                           className="flex items-center space-x-1 text-destructive hover:text-destructive"
                         >
                           <Trash2 className="h-3 w-3" />
-                          <span>Delete</span>
+                          <span className="hidden sm:inline">Delete</span>
                         </Button>
                       </>
                     )}
