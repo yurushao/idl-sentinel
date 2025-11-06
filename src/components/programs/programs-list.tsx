@@ -8,6 +8,8 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { formatRelativeTime, truncateString } from '@/lib/utils'
 import { Plus, Search, Eye, Edit, Trash2 } from 'lucide-react'
+import { useAuth } from '@/lib/auth/auth-context'
+import { AddToWatchlistButton } from '@/components/watchlist/add-to-watchlist-button'
 
 interface MonitoredProgram {
   id: string
@@ -20,6 +22,7 @@ interface MonitoredProgram {
 }
 
 export function ProgramsList() {
+  const { isAdmin } = useAuth()
   const [programs, setPrograms] = useState<MonitoredProgram[]>([])
   const [loading, setLoading] = useState(true)
   const [searchTerm, setSearchTerm] = useState('')
@@ -127,13 +130,15 @@ export function ProgramsList() {
             {filteredPrograms.length} of {programs.length} programs
           </div>
         </div>
-        
-        <Link href="/programs/new">
-          <Button className="flex items-center space-x-2">
-            <Plus className="h-4 w-4" />
-            <span>Add Program</span>
-          </Button>
-        </Link>
+
+        {isAdmin && (
+          <Link href="/programs/new">
+            <Button className="flex items-center space-x-2">
+              <Plus className="h-4 w-4" />
+              <span>Add Program</span>
+            </Button>
+          </Link>
+        )}
       </div>
 
       {filteredPrograms.length === 0 ? (
@@ -143,14 +148,19 @@ export function ProgramsList() {
               <div>
                 <h3 className="text-lg font-medium mb-2">No programs monitored yet</h3>
                 <p className="text-muted-foreground mb-6">
-                  Start monitoring your first Solana program for IDL changes
+                  {isAdmin
+                    ? 'Start monitoring your first Solana program for IDL changes'
+                    : 'No programs are currently being monitored'
+                  }
                 </p>
-                <Link href="/programs/new">
-                  <Button className="flex items-center space-x-2">
-                    <Plus className="h-4 w-4" />
-                    <span>Add Your First Program</span>
-                  </Button>
-                </Link>
+                {isAdmin && (
+                  <Link href="/programs/new">
+                    <Button className="flex items-center space-x-2">
+                      <Plus className="h-4 w-4" />
+                      <span>Add Your First Program</span>
+                    </Button>
+                  </Link>
+                )}
               </div>
             ) : (
               <div>
@@ -197,27 +207,37 @@ export function ProgramsList() {
                   </div>
                   
                   <div className="flex items-center space-x-2 ml-4">
+                    <AddToWatchlistButton
+                      programId={program.program_id}
+                      programDbId={program.id}
+                      size="sm"
+                      variant="outline"
+                    />
                     <Link href={`/programs/${program.id}`}>
                       <Button variant="outline" size="sm" className="flex items-center space-x-1">
                         <Eye className="h-3 w-3" />
                         <span>View</span>
                       </Button>
                     </Link>
-                    <Link href={`/programs/${program.id}/edit`}>
-                      <Button variant="outline" size="sm" className="flex items-center space-x-1">
-                        <Edit className="h-3 w-3" />
-                        <span>Edit</span>
-                      </Button>
-                    </Link>
-                    <Button 
-                      variant="outline" 
-                      size="sm" 
-                      onClick={() => handleDelete(program.id)}
-                      className="flex items-center space-x-1 text-destructive hover:text-destructive"
-                    >
-                      <Trash2 className="h-3 w-3" />
-                      <span>Delete</span>
-                    </Button>
+                    {isAdmin && (
+                      <>
+                        <Link href={`/programs/${program.id}/edit`}>
+                          <Button variant="outline" size="sm" className="flex items-center space-x-1">
+                            <Edit className="h-3 w-3" />
+                            <span>Edit</span>
+                          </Button>
+                        </Link>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handleDelete(program.id)}
+                          className="flex items-center space-x-1 text-destructive hover:text-destructive"
+                        >
+                          <Trash2 className="h-3 w-3" />
+                          <span>Delete</span>
+                        </Button>
+                      </>
+                    )}
                   </div>
                 </div>
               </CardContent>

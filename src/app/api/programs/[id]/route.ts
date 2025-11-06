@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getProgramById, updateProgram, deleteProgram } from '@/lib/db/programs'
+import { getAuthUser } from '@/lib/auth/middleware'
 
 export async function GET(
   request: NextRequest,
@@ -31,13 +32,41 @@ export async function PUT(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    // Check authentication
+    const user = await getAuthUser(request)
+    if (!user) {
+      return NextResponse.json(
+        { error: 'Authentication required' },
+        { status: 401 }
+      )
+    }
+
     const { id } = await params
+
+    // Check if program exists and user owns it
+    const existingProgram = await getProgramById(id)
+    if (!existingProgram) {
+      return NextResponse.json(
+        { error: 'Program not found' },
+        { status: 404 }
+      )
+    }
+
+    // Only admins can update programs (strict check)
+    // If owner_id exists, allow owners too, but if it's null, only admin
+    if (!user.isAdmin && existingProgram.owner_id !== user.userId) {
+      return NextResponse.json(
+        { error: 'Only administrators can update programs' },
+        { status: 403 }
+      )
+    }
+
     const body = await request.json()
     const { name, description, is_active } = body
 
     // Validation
     const updates: any = {}
-    
+
     if (name !== undefined) {
       if (typeof name !== 'string' || name.length < 2 || name.length > 100) {
         return NextResponse.json(
@@ -47,7 +76,7 @@ export async function PUT(
       }
       updates.name = name
     }
-    
+
     if (description !== undefined) {
       if (description !== null && (typeof description !== 'string' || description.length > 500)) {
         return NextResponse.json(
@@ -57,7 +86,7 @@ export async function PUT(
       }
       updates.description = description
     }
-    
+
     if (is_active !== undefined) {
       if (typeof is_active !== 'boolean') {
         return NextResponse.json(
@@ -100,20 +129,60 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    // Check authentication
+    const user = await getAuthUser(request)
+    if (!user) {
+      return NextResponse.json(
+        { error: 'Authentication required' },
+        { status: 401 }
+      )
+    }
+
     const { id } = await params
+
+    // Check if program exists and user owns it
+    const existingProgram = await getProgramById(id)
+    if (!existingProgram) {
+      return NextResponse.json(
+        { error: 'Program not found' },
+        { status: 404 }
+      )
+    }
+
+    // Debug logging
+    console.log('DELETE attempt:', {
+      userWallet: user.walletAddress,
+      userId: user.userId,
+      isAdmin: user.isAdmin,
+      programId: id,
+      programOwnerId: existingProgram.owner_id
+    })
+
+    // Only admins can delete programs (strict check)
+    // If owner_id exists, allow owners too, but if it's null, only admin
+    if (!user.isAdmin && existingProgram.owner_id !== user.userId) {
+      console.log('DELETE DENIED: User is not admin and does not own program')
+      return NextResponse.json(
+        { error: 'Only administrators can delete programs' },
+        { status: 403 }
+      )
+    }
+
+    console.log('DELETE ALLOWED')
+
     await deleteProgram(id)
-    
+
     return NextResponse.json({ message: 'Program deleted successfully' })
   } catch (error) {
     console.error('Error deleting program:', error)
-    
+
     if (error instanceof Error && error.message.includes('not found')) {
       return NextResponse.json(
         { error: 'Program not found' },
         { status: 404 }
       )
     }
-    
+
     return NextResponse.json(
       { error: 'Failed to delete program' },
       { status: 500 }

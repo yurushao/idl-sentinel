@@ -66,15 +66,17 @@ export async function getProgramByAddress(programId: string): Promise<MonitoredP
 export async function createProgram(
   programId: string,
   name: string,
+  ownerId: string,
   description?: string
 ): Promise<MonitoredProgram> {
-  const { data, error } = await supabaseAdmin
+  const { data, error} = await supabaseAdmin
     .from('monitored_programs')
     .insert({
       program_id: programId,
       name,
       description,
-      is_active: true
+      is_active: true,
+      owner_id: ownerId
     })
     .select()
     .single()

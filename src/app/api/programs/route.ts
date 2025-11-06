@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getAllPrograms, createProgram } from '@/lib/db/programs'
 import { isValidProgramId } from '@/lib/utils'
 import { fetchInitialIdl } from '@/lib/monitoring/monitor'
+import { getAuthUser } from '@/lib/auth/middleware'
 
 export async function GET() {
   try {
@@ -18,6 +19,23 @@ export async function GET() {
 
 export async function POST(request: NextRequest) {
   try {
+    // Check authentication
+    const user = await getAuthUser(request)
+    if (!user) {
+      return NextResponse.json(
+        { error: 'Authentication required' },
+        { status: 401 }
+      )
+    }
+
+    // Only admins can create programs
+    if (!user.isAdmin) {
+      return NextResponse.json(
+        { error: 'Only administrators can create programs' },
+        { status: 403 }
+      )
+    }
+
     const body = await request.json()
     const { program_id, name, description } = body
 
@@ -50,8 +68,8 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Create the program in the database
-    const program = await createProgram(program_id, name, description)
+    // Create the program in the database with owner
+    const program = await createProgram(program_id, name, user.userId, description)
     
     // Attempt to fetch IDL immediately
     let idlResult = null

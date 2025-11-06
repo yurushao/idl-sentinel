@@ -1,9 +1,14 @@
 "use client";
 
+import { useState, useEffect } from 'react';
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Monitor, Settings, Activity, Bell } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { WalletMultiButton } from '@solana/wallet-adapter-react-ui';
+import { useAuth } from '@/lib/auth/auth-context';
+import { useWallet } from '@solana/wallet-adapter-react';
+import { Button } from '@/components/ui/button';
 
 const navigation = [
   { name: "Dashboard", href: "/", icon: Monitor },
@@ -46,8 +51,54 @@ export function Header() {
               })}
             </nav>
           </div>
+
+          <div className="flex items-center gap-4">
+            <WalletButton />
+          </div>
         </div>
       </div>
     </header>
   );
+}
+
+function WalletButton() {
+  const { publicKey, connected } = useWallet();
+  const { isAuthenticated, signIn, signOut, isLoading } = useAuth();
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  // Prevent hydration mismatch by not rendering wallet button on server
+  if (!mounted) {
+    return (
+      <div className="h-10 w-[140px] bg-muted/50 rounded-md animate-pulse" />
+    );
+  }
+
+  if (!connected) {
+    return <WalletMultiButton />;
+  }
+
+  if (connected && !isAuthenticated && !isLoading) {
+    return (
+      <Button onClick={signIn} disabled={isLoading}>
+        {isLoading ? 'Signing in...' : 'Sign In'}
+      </Button>
+    );
+  }
+
+  if (isAuthenticated) {
+    return (
+      <div className="flex items-center gap-2">
+        <WalletMultiButton />
+        <Button onClick={signOut} variant="outline" size="sm">
+          Sign Out
+        </Button>
+      </div>
+    );
+  }
+
+  return <WalletMultiButton />;
 }
