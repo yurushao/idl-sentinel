@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useAuth } from '@/lib/auth/auth-context'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
@@ -10,6 +10,8 @@ import { Loader2, Save, TestTube, Check, X, ExternalLink } from 'lucide-react'
 interface UserSettings {
   wallet_address: string
   slack_webhook_url: string | null
+  telegram_chat_id: string | null
+  telegram_username: string | null
   is_admin: boolean
   created_at: string
   last_login_at: string
@@ -21,10 +23,19 @@ export function UserSettings() {
   const [slackWebhook, setSlackWebhook] = useState('')
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
-  const [testing, setTesting] = useState(false)
+  const [testingSlack, setTestingSlack] = useState(false)
+  const [testingTelegram, setTestingTelegram] = useState(false)
+  const [connectingTelegram, setConnectingTelegram] = useState(false)
+  const [disconnectingTelegram, setDisconnectingTelegram] = useState(false)
+  const [telegramConnectionUrl, setTelegramConnectionUrl] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [saveSuccess, setSaveSuccess] = useState(false)
-  const [testSuccess, setTestSuccess] = useState<boolean | null>(null)
+  const [slackTestSuccess, setSlackTestSuccess] = useState<boolean | null>(null)
+  const [telegramTestSuccess, setTelegramTestSuccess] = useState<boolean | null>(null)
+
+  // Ref to store polling interval for cleanup
+  const pollIntervalRef = useRef<NodeJS.Timeout | null>(null)
+  const pollTimeoutRef = useRef<NodeJS.Timeout | null>(null)
 
   useEffect(() => {
     if (!authLoading && isAuthenticated) {
@@ -33,6 +44,18 @@ export function UserSettings() {
       setLoading(false)
     }
   }, [isAuthenticated, authLoading])
+
+  // Cleanup polling on unmount
+  useEffect(() => {
+    return () => {
+      if (pollIntervalRef.current) {
+        clearInterval(pollIntervalRef.current)
+      }
+      if (pollTimeoutRef.current) {
+        clearTimeout(pollTimeoutRef.current)
+      }
+    }
+  }, [])
 
   const fetchSettings = async () => {
     try {
@@ -90,11 +113,11 @@ export function UserSettings() {
     }
   }
 
-  const testWebhook = async () => {
+  const testSlackWebhook = async () => {
     try {
-      setTesting(true)
+      setTestingSlack(true)
       setError(null)
-      setTestSuccess(null)
+      setSlackTestSuccess(null)
 
       const response = await fetch('/api/user/settings', {
         method: 'POST',
@@ -102,6 +125,7 @@ export function UserSettings() {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
+          test_type: 'slack',
           slack_webhook_url: slackWebhook,
         }),
       })
@@ -111,16 +135,147 @@ export function UserSettings() {
         throw new Error(errorData.error || 'Failed to send test notification')
       }
 
-      setTestSuccess(true)
-
-      // Clear success message after 5 seconds
-      setTimeout(() => setTestSuccess(null), 5000)
+      setSlackTestSuccess(true)
+      setTimeout(() => setSlackTestSuccess(null), 5000)
     } catch (err) {
-      console.error('Error testing webhook:', err)
-      setTestSuccess(false)
+      console.error('Error testing Slack webhook:', err)
+      setSlackTestSuccess(false)
       setError(err instanceof Error ? err.message : 'Failed to send test notification')
     } finally {
-      setTesting(false)
+      setTestingSlack(false)
+    }
+  }
+
+  const connectTelegram = async () => {
+    try {
+      setConnectingTelegram(true)
+      setError(null)
+
+      // Clear any existing polling
+      if (pollIntervalRef.current) {
+        clearInterval(pollIntervalRef.current)
+      }
+      if (pollTimeoutRef.current) {
+        clearTimeout(pollTimeoutRef.current)
+      }
+
+      const response = await fetch('/api/telegram/connect', {
+        method: 'POST',
+      })
+
+      if (!response.ok) {
+        const errorData = await response.json()
+        throw new Error(errorData.error || 'Failed to generate connection link')
+      }
+
+      const data = await response.json()
+      setTelegramConnectionUrl(data.telegramUrl)
+
+      // Auto-open the link in a new tab
+      window.open(data.telegramUrl, '_blank')
+
+      // Poll for connection status
+      pollIntervalRef.current = setInterval(async () => {
+        try {
+          const response = await fetch('/api/user/settings')
+          if (response.ok) {
+            const data = await response.json()
+            // Check if telegram is now connected
+            if (data.user?.telegram_chat_id) {
+              if (pollIntervalRef.current) {
+                clearInterval(pollIntervalRef.current)
+                pollIntervalRef.current = null
+              }
+              if (pollTimeoutRef.current) {
+                clearTimeout(pollTimeoutRef.current)
+                pollTimeoutRef.current = null
+              }
+              setTelegramConnectionUrl(null)
+              // Update settings to show connected state
+              setSettings(data.user)
+            }
+          }
+        } catch (err) {
+          console.error('Error polling for connection status:', err)
+        }
+      }, 3000) // Poll every 3 seconds
+
+      // Stop polling after 10 minutes (link expires)
+      pollTimeoutRef.current = setTimeout(() => {
+        if (pollIntervalRef.current) {
+          clearInterval(pollIntervalRef.current)
+          pollIntervalRef.current = null
+        }
+        setTelegramConnectionUrl(null)
+      }, 10 * 60 * 1000)
+
+    } catch (err) {
+      console.error('Error connecting Telegram:', err)
+      setError(err instanceof Error ? err.message : 'Failed to connect Telegram')
+    } finally {
+      setConnectingTelegram(false)
+    }
+  }
+
+  const disconnectTelegram = async () => {
+    try {
+      setDisconnectingTelegram(true)
+      setError(null)
+
+      const response = await fetch('/api/user/settings', {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          telegram_chat_id: null,
+        }),
+      })
+
+      if (!response.ok) {
+        const errorData = await response.json()
+        throw new Error(errorData.error || 'Failed to disconnect Telegram')
+      }
+
+      const data = await response.json()
+      setSettings(data.user)
+    } catch (err) {
+      console.error('Error disconnecting Telegram:', err)
+      setError(err instanceof Error ? err.message : 'Failed to disconnect Telegram')
+    } finally {
+      setDisconnectingTelegram(false)
+    }
+  }
+
+  const testTelegram = async () => {
+    try {
+      setTestingTelegram(true)
+      setError(null)
+      setTelegramTestSuccess(null)
+
+      const response = await fetch('/api/user/settings', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          test_type: 'telegram',
+        }),
+      })
+
+      if (!response.ok) {
+        const errorData = await response.json()
+        throw new Error(errorData.error || 'Failed to send test notification')
+      }
+
+      setTelegramTestSuccess(true)
+      setTimeout(() => setTelegramTestSuccess(null), 5000)
+    } catch (err) {
+      console.error('Error testing Telegram:', err)
+      setTelegramTestSuccess(false)
+      setError(err instanceof Error ? err.message : 'Failed to send test notification')
+    } finally {
+      setTestingTelegram(false)
     }
   }
 
@@ -218,11 +373,11 @@ export function UserSettings() {
                 className="flex-1 font-mono text-sm"
               />
               <Button
-                onClick={testWebhook}
-                disabled={!slackWebhook || testing}
+                onClick={testSlackWebhook}
+                disabled={!slackWebhook || testingSlack}
                 variant="outline"
               >
-                {testing ? (
+                {testingSlack ? (
                   <Loader2 className="h-4 w-4 animate-spin mr-2" />
                 ) : (
                   <TestTube className="h-4 w-4 mr-2" />
@@ -231,9 +386,9 @@ export function UserSettings() {
               </Button>
             </div>
 
-            {testSuccess !== null && (
-              <div className={`mt-2 text-sm flex items-center ${testSuccess ? 'text-green-600' : 'text-red-600'}`}>
-                {testSuccess ? (
+            {slackTestSuccess !== null && (
+              <div className={`mt-2 text-sm flex items-center ${slackTestSuccess ? 'text-green-600' : 'text-red-600'}`}>
+                {slackTestSuccess ? (
                   <>
                     <Check className="h-4 w-4 mr-1" />
                     Test notification sent successfully! Check your Slack channel.
@@ -243,6 +398,125 @@ export function UserSettings() {
                     <X className="h-4 w-4 mr-1" />
                     Failed to send test notification. Please check your webhook URL.
                   </>
+                )}
+              </div>
+            )}
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium mb-2">
+              Telegram Notifications
+            </label>
+            <p className="text-xs text-muted-foreground mb-4">
+              Receive notifications via Telegram when programs in your watchlist have IDL changes.
+            </p>
+
+            {!settings?.telegram_chat_id ? (
+              <div className="space-y-3">
+                <Button
+                  onClick={connectTelegram}
+                  disabled={connectingTelegram}
+                  className="w-full"
+                >
+                  {connectingTelegram ? (
+                    <>
+                      <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                      Generating connection link...
+                    </>
+                  ) : (
+                    <>
+                      Connect Telegram
+                    </>
+                  )}
+                </Button>
+
+                {telegramConnectionUrl && (
+                  <div className="p-3 bg-blue-50 border border-blue-200 rounded-md space-y-2">
+                    <p className="text-sm font-medium text-blue-900">
+                      Connection link generated!
+                    </p>
+                    <p className="text-xs text-blue-700">
+                      Click the button below or use this link to connect your Telegram:
+                    </p>
+                    <a
+                      href={telegramConnectionUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center text-sm text-blue-600 hover:underline"
+                    >
+                      Open in Telegram
+                      <ExternalLink className="h-3 w-3 ml-1" />
+                    </a>
+                    <p className="text-xs text-blue-600 mt-2">
+                      Waiting for you to connect... (Link expires in 10 minutes)
+                    </p>
+                  </div>
+                )}
+
+                <p className="text-xs text-muted-foreground">
+                  Click the button above to open a Telegram chat with the IDL Sentinel bot.
+                  Click "Start" in Telegram to complete the connection.
+                </p>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                <div className="flex items-center justify-between p-3 bg-green-50 border border-green-200 rounded-md">
+                  <div className="flex items-center">
+                    <Check className="h-4 w-4 text-green-600 mr-2" />
+                    <div>
+                      <p className="text-sm font-medium text-green-900">Connected</p>
+                      {settings.telegram_username && (
+                        <p className="text-xs text-green-700">@{settings.telegram_username}</p>
+                      )}
+                    </div>
+                  </div>
+                  <Button
+                    onClick={disconnectTelegram}
+                    disabled={disconnectingTelegram}
+                    variant="outline"
+                    size="sm"
+                  >
+                    {disconnectingTelegram ? (
+                      <Loader2 className="h-3 w-3 animate-spin" />
+                    ) : (
+                      'Disconnect'
+                    )}
+                  </Button>
+                </div>
+
+                <Button
+                  onClick={testTelegram}
+                  disabled={testingTelegram}
+                  variant="outline"
+                  className="w-full"
+                >
+                  {testingTelegram ? (
+                    <>
+                      <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                      Sending test...
+                    </>
+                  ) : (
+                    <>
+                      <TestTube className="h-4 w-4 mr-2" />
+                      Send Test Notification
+                    </>
+                  )}
+                </Button>
+
+                {telegramTestSuccess !== null && (
+                  <div className={`text-sm flex items-center ${telegramTestSuccess ? 'text-green-600' : 'text-red-600'}`}>
+                    {telegramTestSuccess ? (
+                      <>
+                        <Check className="h-4 w-4 mr-1" />
+                        Test notification sent! Check your Telegram.
+                      </>
+                    ) : (
+                      <>
+                        <X className="h-4 w-4 mr-1" />
+                        Failed to send test notification.
+                      </>
+                    )}
+                  </div>
                 )}
               </div>
             )}

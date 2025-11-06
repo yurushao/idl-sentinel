@@ -16,7 +16,7 @@ export async function GET(request: NextRequest) {
 
     const { data, error } = await supabaseAdmin
       .from('users')
-      .select('wallet_address, slack_webhook_url, is_admin, created_at, last_login_at')
+      .select('wallet_address, slack_webhook_url, telegram_chat_id, telegram_username, is_admin, created_at, last_login_at')
       .eq('id', user.userId)
       .single()
 
@@ -49,12 +49,12 @@ export async function PUT(request: NextRequest) {
     }
 
     const body = await request.json()
-    const { slack_webhook_url } = body
+    const { slack_webhook_url, telegram_chat_id } = body
 
     const updates: any = {}
 
+    // Handle Slack webhook
     if (slack_webhook_url !== undefined) {
-      // Validate Slack webhook URL format
       if (slack_webhook_url !== null && slack_webhook_url !== '') {
         if (!slack_webhook_url.startsWith('https://hooks.slack.com/')) {
           return NextResponse.json(
@@ -65,6 +65,14 @@ export async function PUT(request: NextRequest) {
         updates.slack_webhook_url = slack_webhook_url
       } else {
         updates.slack_webhook_url = null
+      }
+    }
+
+    // Handle Telegram disconnection (connection is done via /api/telegram/connect)
+    if (telegram_chat_id !== undefined) {
+      if (telegram_chat_id === null) {
+        updates.telegram_chat_id = null
+        updates.telegram_username = null
       }
     }
 
@@ -100,7 +108,7 @@ export async function PUT(request: NextRequest) {
   }
 }
 
-// Test Slack webhook
+// Test Slack webhook or Telegram bot
 export async function POST(request: NextRequest) {
   try {
     const user = await getAuthUser(request)
@@ -112,37 +120,77 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json()
-    const { slack_webhook_url } = body
+    const { slack_webhook_url, test_type } = body
 
-    if (!slack_webhook_url) {
-      return NextResponse.json(
-        { error: 'Slack webhook URL is required' },
-        { status: 400 }
-      )
+    // Test Slack
+    if (test_type === 'slack' || slack_webhook_url) {
+      if (!slack_webhook_url) {
+        return NextResponse.json(
+          { error: 'Slack webhook URL is required' },
+          { status: 400 }
+        )
+      }
+
+      if (!slack_webhook_url.startsWith('https://hooks.slack.com/')) {
+        return NextResponse.json(
+          { error: 'Invalid Slack webhook URL format' },
+          { status: 400 }
+        )
+      }
+
+      const success = await testSlackWebhook(slack_webhook_url)
+
+      if (success) {
+        return NextResponse.json({
+          success: true,
+          message: 'Slack test notification sent successfully'
+        })
+      } else {
+        return NextResponse.json(
+          { error: 'Failed to send Slack test notification' },
+          { status: 500 }
+        )
+      }
     }
 
-    if (!slack_webhook_url.startsWith('https://hooks.slack.com/')) {
-      return NextResponse.json(
-        { error: 'Invalid Slack webhook URL format' },
-        { status: 400 }
-      )
+    // Test Telegram - send to user's connected Telegram
+    if (test_type === 'telegram') {
+      // Get user's telegram_chat_id from database
+      const { data: userData, error: userError } = await supabaseAdmin
+        .from('users')
+        .select('telegram_chat_id')
+        .eq('id', user.userId)
+        .single()
+
+      if (userError || !userData || !userData.telegram_chat_id) {
+        return NextResponse.json(
+          { error: 'Telegram not connected. Please connect your Telegram account first.' },
+          { status: 400 }
+        )
+      }
+
+      const { testTelegramConfig } = await import('@/lib/notifications/telegram-user')
+      const success = await testTelegramConfig(userData.telegram_chat_id)
+
+      if (success) {
+        return NextResponse.json({
+          success: true,
+          message: 'Telegram test notification sent successfully'
+        })
+      } else {
+        return NextResponse.json(
+          { error: 'Failed to send Telegram test notification.' },
+          { status: 500 }
+        )
+      }
     }
 
-    const success = await testSlackWebhook(slack_webhook_url)
-
-    if (success) {
-      return NextResponse.json({
-        success: true,
-        message: 'Test notification sent successfully'
-      })
-    } else {
-      return NextResponse.json(
-        { error: 'Failed to send test notification' },
-        { status: 500 }
-      )
-    }
+    return NextResponse.json(
+      { error: 'Invalid test type or missing parameters' },
+      { status: 400 }
+    )
   } catch (error) {
-    console.error('Error testing Slack webhook:', error)
+    console.error('Error testing notification:', error)
     return NextResponse.json(
       { error: 'Failed to send test notification' },
       { status: 500 }

@@ -8,41 +8,22 @@ export interface TelegramConfig {
 }
 
 /**
- * Gets Telegram configuration from the database
+ * Gets Telegram configuration from environment variables
  */
 export async function getTelegramConfig(): Promise<TelegramConfig | null> {
   try {
-    const { data: settings, error } = await supabaseAdmin
-      .from('notification_settings')
-      .select('setting_key, setting_value, is_active')
-      .in('setting_key', ['telegram_bot_token', 'telegram_chat_id'])
-      .eq('is_active', true)
+    const botToken = process.env.TELEGRAM_BOT_TOKEN
+    const chatId = process.env.TELEGRAM_CHAT_ID
 
-    if (error) {
-      console.error('Error fetching Telegram config:', error)
+    if (!botToken || !chatId) {
+      console.log('Telegram not configured (missing environment variables)')
       return null
     }
 
-    if (!settings || settings.length < 2) {
-      console.log('Telegram not fully configured')
-      return null
+    return {
+      botToken,
+      chatId
     }
-
-    const config: any = {}
-    for (const setting of settings) {
-      if (setting.setting_key === 'telegram_bot_token') {
-        config.botToken = setting.setting_value
-      } else if (setting.setting_key === 'telegram_chat_id') {
-        config.chatId = setting.setting_value
-      }
-    }
-
-    if (!config.botToken || !config.chatId) {
-      console.log('Telegram configuration incomplete')
-      return null
-    }
-
-    return config
   } catch (error) {
     console.error('Error getting Telegram config:', error)
     return null

@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { monitorPrograms } from "@/lib/monitoring/monitor";
-import { sendPendingNotifications } from "@/lib/notifications/telegram";
 import { sendWatchlistNotifications } from "@/lib/notifications/slack";
+import { sendTelegramWatchlistNotifications } from "@/lib/notifications/telegram-user";
+import { cleanupExpiredTokens } from "@/lib/telegram/connection-tokens";
 
 export async function GET(request: NextRequest) {
   const authHeader = request.headers.get("authorization");
@@ -14,22 +15,25 @@ export async function GET(request: NextRequest) {
   // Run the monitoring process
   const result = await monitorPrograms();
 
-  // Send Telegram notifications for any new changes (legacy/admin notifications)
-  const telegramResult = await sendPendingNotifications();
-
   // Send Slack notifications to users based on their watchlists
   const slackResult = await sendWatchlistNotifications();
 
+  // Send Telegram notifications to users based on their watchlists
+  const telegramUserResult = await sendTelegramWatchlistNotifications();
+
+  // Clean up expired Telegram connection tokens
+  await cleanupExpiredTokens();
+
   console.log("Scheduled monitoring completed:", result);
-  console.log("Telegram notification result:", telegramResult);
   console.log("Slack notification result:", slackResult);
+  console.log("Telegram user notification result:", telegramUserResult);
 
   return NextResponse.json({
     success: true,
     message: "IDL monitoring and notifications completed",
     result,
     notifications: {
-      telegram: telegramResult,
+      telegram_user: telegramUserResult,
       slack: slackResult,
     },
   });

@@ -44,16 +44,9 @@ export interface IdlChange {
   notified_at?: string
   slack_notified?: boolean
   slack_notified_at?: string
+  telegram_user_notified?: boolean
+  telegram_user_notified_at?: string
   detected_at: string
-}
-
-export interface NotificationSetting {
-  id: string
-  setting_key: string
-  setting_value: string
-  is_active: boolean
-  created_at: string
-  updated_at: string
 }
 
 export interface MonitoringLog {
@@ -71,6 +64,8 @@ export interface User {
   wallet_address: string
   is_admin: boolean
   slack_webhook_url?: string | null
+  telegram_chat_id?: string | null
+  telegram_username?: string | null
   created_at: string
   last_login_at: string
 }
