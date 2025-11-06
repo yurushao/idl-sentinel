@@ -153,7 +153,7 @@ export async function getUsersWatchingProgram(programId: string): Promise<SlackW
       return []
     }
 
-    return data.map(entry => ({
+    return data.map((entry: any) => ({
       userId: entry.users.id,
       walletAddress: entry.users.wallet_address,
       webhookUrl: entry.users.slack_webhook_url
@@ -206,7 +206,7 @@ export async function sendWatchlistNotifications(): Promise<{
     // Group changes by program
     const changesByProgram = new Map<string, any[]>()
 
-    for (const change of changes) {
+    for (const change of changes as any[]) {
       const programDbId = change.monitored_programs.id
       if (!changesByProgram.has(programDbId)) {
         changesByProgram.set(programDbId, [])

@@ -17,6 +17,7 @@ export interface MonitoredProgram {
   name: string
   description?: string
   is_active: boolean
+  owner_id?: string | null
   created_at: string
   updated_at: string
 }
@@ -41,6 +42,8 @@ export interface IdlChange {
   severity: 'low' | 'medium' | 'high' | 'critical'
   notified: boolean
   notified_at?: string
+  slack_notified?: boolean
+  slack_notified_at?: string
   detected_at: string
 }
 
@@ -60,5 +63,21 @@ export interface MonitoringLog {
   log_level: 'info' | 'warning' | 'error'
   message: string
   metadata?: any
+  created_at: string
+}
+
+export interface User {
+  id: string
+  wallet_address: string
+  is_admin: boolean
+  slack_webhook_url?: string | null
+  created_at: string
+  last_login_at: string
+}
+
+export interface UserWatchlist {
+  id: string
+  user_id: string
+  program_id: string
   created_at: string
 }
