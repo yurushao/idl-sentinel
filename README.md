@@ -2,24 +2,33 @@
 
 A comprehensive monitoring system for Solana program IDL (Interface Definition Language) changes. Track modifications to your Solana programs in real-time and receive notifications when changes are detected.
 
+## Screenshots
+
+_Coming soon: Dashboard, Diff Viewer, and Snapshot Inspector screenshots_
+
 ## Features
 
 - 🔍 **Real-time IDL Monitoring**: Automatically fetch and compare IDL changes from Solana programs
 - 📊 **Change Detection**: Intelligent analysis of instruction, type, account, and error changes
 - 🚨 **Severity Classification**: Categorize changes by impact level (low, medium, high, critical)
-- 📱 **Telegram Notifications**: Get instant alerts about important changes
-- 🌐 **Web Dashboard**: Beautiful interface to manage programs and view changes
+- 🔐 **Wallet Authentication**: Sign in with Solana wallets (Phantom, Solflare, etc.)
+- 📱 **Multi-Channel Notifications**: Get alerts via Telegram and Slack
+- 🎨 **Enhanced Diff Viewer**: Professional side-by-side or unified diff view with syntax highlighting
+- 📥 **Snapshot Inspection**: View and download full IDL snapshots with syntax highlighting
+- 🌐 **Responsive Dashboard**: Beautiful interface optimized for desktop, tablet, and mobile
 - ⏰ **Automated Monitoring**: Scheduled checks via Vercel cron jobs
 - 📈 **Analytics**: Track monitoring statistics and change trends
 
 ## Tech Stack
 
-- **Frontend**: Next.js 14, React, TypeScript, Tailwind CSS
+- **Frontend**: Next.js 16, React 19, TypeScript, Tailwind CSS
 - **Backend**: Next.js API Routes, Node.js
 - **Database**: Supabase (PostgreSQL)
-- **Blockchain**: Solana Web3.js, Anchor
+- **Blockchain**: Solana Web3.js, Anchor, Wallet Adapter
+- **UI Components**: Radix UI, Lucide Icons
+- **Code Highlighting**: React Syntax Highlighter, React Diff Viewer
 - **Deployment**: Vercel
-- **Notifications**: Telegram Bot API
+- **Notifications**: Telegram Bot API, Slack Webhooks
 
 ## Quick Start
 
@@ -49,24 +58,32 @@ A comprehensive monitoring system for Solana program IDL (Interface Definition L
    NEXT_PUBLIC_SUPABASE_URL=your_supabase_url
    NEXT_PUBLIC_SUPABASE_ANON_KEY=your_supabase_anon_key
    SUPABASE_SERVICE_ROLE_KEY=your_supabase_service_role_key
-   
+
    # Solana Configuration
    SOLANA_RPC_URL=https://api.mainnet-beta.solana.com
-   
+
+   # Authentication
+   JWT_SECRET=your_jwt_secret_for_wallet_auth
+
+   # Notifications (optional)
+   TELEGRAM_BOT_TOKEN=your_telegram_bot_token
+   SLACK_WEBHOOK_URL=your_slack_webhook_url
+
    # Security
    CRON_SECRET=your_random_secret_for_cron_jobs
-   
+
    # Development
    NODE_ENV=development
    ```
 
 3. **Set up the database**:
    The database schema is automatically created via Supabase migrations. The following tables will be created:
+   - `users`: Authenticated users via wallet
    - `monitored_programs`: Programs being monitored
    - `idl_snapshots`: Historical IDL snapshots
    - `idl_changes`: Detected changes with severity
-   - `notification_settings`: Telegram configuration
-   - `monitoring_logs`: System logs
+   - `user_settings`: User notification preferences (Telegram, Slack)
+   - `monitoring_logs`: System logs and activity tracking
 
 4. **Run the development server**:
    ```bash
@@ -78,6 +95,13 @@ A comprehensive monitoring system for Solana program IDL (Interface Definition L
 
 ## Usage
 
+### Authentication
+
+1. Click "Connect Wallet" in the navigation bar
+2. Select your preferred Solana wallet (Phantom, Solflare, etc.)
+3. Sign the authentication message to verify ownership
+4. Access protected features and personalized dashboard
+
 ### Adding Programs to Monitor
 
 1. Navigate to the "Programs" page
@@ -85,19 +109,37 @@ A comprehensive monitoring system for Solana program IDL (Interface Definition L
 3. Enter the Solana program ID and details
 4. The system will automatically start monitoring for IDL changes
 
-### Setting Up Notifications
+### Viewing IDL Snapshots
 
-1. Go to "Settings" page
-2. Create a Telegram bot via @BotFather
-3. Get your chat ID from @userinfobot
-4. Configure the bot token and chat ID
-5. Test the notification to ensure it works
+On the program detail page, you can:
+- **View**: Click the eye icon to see the full IDL with syntax highlighting
+- **Download**: Export the IDL snapshot as a formatted JSON file
+- **Compare**: See changes between snapshots with enhanced diff viewer
 
 ### Viewing Changes
 
 - **Dashboard**: Overview of recent changes and statistics
-- **Changes**: Detailed view of all detected changes with filtering
-- **Programs**: Manage your monitored programs
+- **Changes Page**:
+  - Detailed view of all detected changes with filtering
+  - Professional diff viewer showing before/after comparisons
+  - Toggle between split-view and unified-view modes
+  - Syntax highlighting for better readability
+- **Programs**: Manage your monitored programs and view their history
+
+### Setting Up Notifications
+
+#### Telegram
+1. Go to "Settings" page
+2. Create a Telegram bot via @BotFather
+3. Get your chat ID from @userinfobot or @RawDataBot
+4. Configure the bot token and chat ID
+5. Test the notification to ensure it works
+
+#### Slack
+1. Create an incoming webhook in your Slack workspace
+2. Add the webhook URL in Settings
+3. Configure notification preferences
+4. Test to verify delivery
 
 ## Deployment
 
@@ -113,7 +155,10 @@ A comprehensive monitoring system for Solana program IDL (Interface Definition L
    - `NEXT_PUBLIC_SUPABASE_ANON_KEY`
    - `SUPABASE_SERVICE_ROLE_KEY`
    - `SOLANA_RPC_URL`
+   - `JWT_SECRET`
    - `CRON_SECRET`
+   - `TELEGRAM_BOT_TOKEN` (optional)
+   - `SLACK_WEBHOOK_URL` (optional)
 
 3. **Configure cron jobs**:
    The `vercel.json` file includes cron configuration for hourly monitoring.
@@ -134,27 +179,35 @@ curl -X POST https://your-domain.vercel.app/api/cron/monitor-idls \
 
 ## API Endpoints
 
+### Authentication
+- `POST /api/auth/nonce` - Get nonce for wallet signature
+- `POST /api/auth/verify` - Verify signature and create session
+- `GET /api/auth/me` - Get current user info
+- `POST /api/auth/signout` - Sign out and clear session
+
 ### Programs
 - `GET /api/programs` - List all programs
-- `POST /api/programs` - Add new program
+- `POST /api/programs` - Add new program (requires auth)
 - `GET /api/programs/[id]` - Get program details
-- `PUT /api/programs/[id]` - Update program
-- `DELETE /api/programs/[id]` - Delete program
+- `PUT /api/programs/[id]` - Update program (requires auth)
+- `DELETE /api/programs/[id]` - Delete program (requires auth)
 
 ### Changes
 - `GET /api/changes` - List changes with filtering
 - `GET /api/programs/[id]/changes` - Get changes for specific program
-- `GET /api/programs/[id]/snapshots` - Get IDL snapshots
+- `GET /api/programs/[id]/snapshots` - Get IDL snapshots for a program
 
 ### Monitoring
-- `POST /api/cron/monitor-idls` - Trigger monitoring (protected)
+- `POST /api/cron/monitor-idls` - Trigger monitoring (protected by CRON_SECRET)
 - `GET /api/monitoring/stats` - Get monitoring statistics
 
-### Notifications
-- `GET /api/notifications/settings` - Get notification settings
-- `PUT /api/notifications/settings` - Update settings
-- `POST /api/notifications/test` - Test notification
-- `POST /api/notifications/send` - Send pending notifications
+### User Settings
+- `GET /api/user/settings` - Get user notification settings
+- `PUT /api/user/settings` - Update notification preferences
+
+### Telegram Integration
+- `POST /api/telegram/connect` - Connect Telegram account
+- `POST /api/telegram/webhook` - Telegram webhook endpoint
 
 ## Architecture
 
@@ -206,11 +259,24 @@ For issues and questions:
 
 ## Roadmap
 
+### Completed ✅
+- [x] Wallet authentication (Solana wallets)
+- [x] Telegram notifications
+- [x] Slack notifications
+- [x] Enhanced diff viewer with syntax highlighting
+- [x] Snapshot inspection and download
+- [x] Responsive mobile design
+- [x] Advanced filtering and search
+
+### Planned 🚀
 - [ ] Discord notifications
 - [ ] Email notifications
-- [ ] Advanced filtering and search
-- [ ] Change history visualization
+- [ ] Change history visualization graphs
 - [ ] Multi-network support (Devnet, Testnet)
 - [ ] Program dependency tracking
 - [ ] Custom webhook notifications
 - [ ] Change approval workflows
+- [ ] Snapshot comparison tool
+- [ ] Export reports (PDF, CSV)
+- [ ] Team collaboration features
+- [ ] API rate limiting and quotas
