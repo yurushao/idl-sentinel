@@ -3,6 +3,13 @@
 import { Badge } from '@/components/ui/badge'
 import { Card } from '@/components/ui/card'
 import { ArrowRight, Plus, Minus, Edit } from 'lucide-react'
+import dynamic from 'next/dynamic'
+import { useMemo, useState } from 'react'
+
+// Dynamically import ReactDiffViewer to avoid SSR issues
+const ReactDiffViewer = dynamic(() => import('react-diff-viewer'), {
+  ssr: false,
+})
 
 interface ChangeDetailsProps {
   details: {
@@ -18,27 +25,20 @@ export function ChangeDetails({ details }: ChangeDetailsProps) {
   const isAddition = details.changeType.includes('added')
   const isRemoval = details.changeType.includes('removed')
   const isModification = details.changeType.includes('modified')
+  const [splitView, setSplitView] = useState(true)
 
-  const renderValue = (value: any, label: string) => {
+  // Format values as pretty JSON strings for diff viewer
+  const formatValue = (value: any): string => {
     if (value === undefined || value === null) {
-      return null
+      return ''
     }
-
-    return (
-      <div className="flex-1">
-        <div className="text-xs font-medium text-muted-foreground mb-2">{label}</div>
-        <div className="bg-muted rounded-lg p-3">
-          {typeof value === 'object' ? (
-            <pre className="text-xs overflow-x-auto whitespace-pre-wrap">
-              {JSON.stringify(value, null, 2)}
-            </pre>
-          ) : (
-            <code className="text-xs">{String(value)}</code>
-          )}
-        </div>
-      </div>
-    )
+    return typeof value === 'object'
+      ? JSON.stringify(value, null, 2)
+      : String(value)
   }
+
+  const oldValueStr = useMemo(() => formatValue(details.oldValue), [details.oldValue])
+  const newValueStr = useMemo(() => formatValue(details.newValue), [details.newValue])
 
   const getChangeIcon = () => {
     if (isAddition) return <Plus className="h-4 w-4 text-green-500" />
@@ -67,25 +67,78 @@ export function ChangeDetails({ details }: ChangeDetailsProps) {
       {/* Description */}
       <p className="text-sm text-muted-foreground">{details.description}</p>
 
-      {/* Value Comparison */}
+      {/* Diff Viewer */}
       {(details.oldValue !== undefined || details.newValue !== undefined) && (
         <div className="space-y-3">
-          {isModification ? (
-            // Side-by-side comparison for modifications
-            <div className="grid gap-4 md:grid-cols-2">
-              {renderValue(details.oldValue, 'Before')}
-              {details.oldValue !== undefined && details.newValue !== undefined && (
-                <div className="hidden md:flex items-center justify-center">
-                  <ArrowRight className="h-5 w-5 text-muted-foreground" />
-                </div>
-              )}
-              {renderValue(details.newValue, 'After')}
+          {isModification && oldValueStr && newValueStr ? (
+            // Enhanced diff view for modifications
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <div className="text-xs font-medium text-muted-foreground">Changes</div>
+                <button
+                  onClick={() => setSplitView(!splitView)}
+                  className="text-xs text-muted-foreground hover:text-foreground transition-colors"
+                >
+                  {splitView ? 'Unified view' : 'Split view'}
+                </button>
+              </div>
+              <div className="border rounded-lg overflow-hidden">
+                <ReactDiffViewer
+                  oldValue={oldValueStr}
+                  newValue={newValueStr}
+                  splitView={splitView}
+                  useDarkTheme={false}
+                  styles={{
+                    variables: {
+                      light: {
+                        diffViewerBackground: 'hsl(var(--background))',
+                        diffViewerColor: 'hsl(var(--foreground))',
+                        addedBackground: '#e6ffed',
+                        addedColor: '#24292e',
+                        removedBackground: '#ffeef0',
+                        removedColor: '#24292e',
+                        wordAddedBackground: '#acf2bd',
+                        wordRemovedBackground: '#fdb8c0',
+                        addedGutterBackground: '#cdffd8',
+                        removedGutterBackground: '#ffdce0',
+                        gutterBackground: 'hsl(var(--muted))',
+                        gutterBackgroundDark: 'hsl(var(--muted))',
+                        highlightBackground: '#fffbdd',
+                        highlightGutterBackground: '#fff5b1',
+                      },
+                    },
+                    line: {
+                      fontSize: '12px',
+                      fontFamily: 'ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace',
+                      letterSpacing: '0',
+                      lineHeight: '1.6',
+                      whiteSpace: 'pre',
+                      wordBreak: 'normal',
+                      wordWrap: 'normal',
+                    },
+                    contentText: {
+                      fontFamily: 'ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace',
+                      letterSpacing: '0',
+                      fontVariantLigatures: 'none',
+                      fontFeatureSettings: 'normal',
+                    },
+                  }}
+                />
+              </div>
             </div>
           ) : (
             // Single value display for additions/removals
-            <div>
-              {isAddition && renderValue(details.newValue, 'Added')}
-              {isRemoval && renderValue(details.oldValue, 'Removed')}
+            <div className="space-y-2">
+              <div className="text-xs font-medium text-muted-foreground">
+                {isAddition ? 'Added Value' : 'Removed Value'}
+              </div>
+              <div className="border rounded-lg overflow-hidden">
+                <div className={`p-3 ${isAddition ? 'bg-green-50' : 'bg-red-50'}`}>
+                  <pre className="text-xs overflow-x-auto whitespace-pre-wrap font-mono">
+                    {isAddition ? newValueStr : oldValueStr}
+                  </pre>
+                </div>
+              </div>
             </div>
           )}
         </div>
