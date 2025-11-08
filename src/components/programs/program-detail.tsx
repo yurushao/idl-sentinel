@@ -9,19 +9,28 @@ import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { formatRelativeTime, truncateString } from '@/lib/utils'
-import { 
-  ArrowLeft, 
-  Edit, 
-  Trash2, 
-  RefreshCw, 
-  Copy, 
+import {
+  ArrowLeft,
+  Edit,
+  Trash2,
+  RefreshCw,
+  Copy,
   ExternalLink,
   Clock,
   Activity,
   AlertCircle,
   CheckCircle,
-  XCircle
+  XCircle,
+  Eye,
+  Download,
+  X
 } from 'lucide-react'
+import { Light as SyntaxHighlighter } from 'react-syntax-highlighter'
+import json from 'react-syntax-highlighter/dist/esm/languages/hljs/json'
+import { github } from 'react-syntax-highlighter/dist/esm/styles/hljs'
+
+// Register JSON language
+SyntaxHighlighter.registerLanguage('json', json)
 
 interface MonitoredProgram {
   id: string
@@ -64,6 +73,7 @@ export function ProgramDetail({ programId }: ProgramDetailProps) {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [refreshing, setRefreshing] = useState(false)
+  const [viewingSnapshot, setViewingSnapshot] = useState<Snapshot | null>(null)
 
   useEffect(() => {
     fetchProgramData()
@@ -137,6 +147,24 @@ export function ProgramDetail({ programId }: ProgramDetailProps) {
 
   const copyToClipboard = (text: string) => {
     navigator.clipboard.writeText(text)
+  }
+
+  const formatHash = (hash: string) => {
+    if (hash.length <= 16) return hash
+    return `${hash.slice(0, 8)}...${hash.slice(-8)}`
+  }
+
+  const downloadSnapshot = (snapshot: Snapshot) => {
+    const dataStr = JSON.stringify(snapshot.idl_content, null, 2)
+    const dataBlob = new Blob([dataStr], { type: 'application/json' })
+    const url = URL.createObjectURL(dataBlob)
+    const link = document.createElement('a')
+    link.href = url
+    link.download = `${program?.name || 'snapshot'}_${snapshot.idl_hash.substring(0, 8)}.json`
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
+    URL.revokeObjectURL(url)
   }
 
   const getSeverityColor = (severity: string) => {
@@ -349,21 +377,40 @@ export function ProgramDetail({ programId }: ProgramDetailProps) {
                     key={snapshot.id}
                     className="flex items-center justify-between p-3 border rounded-lg"
                   >
-                    <div>
+                    <div className="flex-1">
                       <code className="text-xs bg-muted px-2 py-1 rounded">
-                        {truncateString(snapshot.idl_hash, 12)}
+                        {formatHash(snapshot.idl_hash)}
                       </code>
                       <p className="text-xs text-muted-foreground mt-1">
                         {formatRelativeTime(snapshot.fetched_at)}
                       </p>
                     </div>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => copyToClipboard(snapshot.idl_hash)}
-                    >
-                      <Copy className="h-4 w-4" />
-                    </Button>
+                    <div className="flex items-center gap-1">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => setViewingSnapshot(snapshot)}
+                        title="View IDL"
+                      >
+                        <Eye className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => downloadSnapshot(snapshot)}
+                        title="Download JSON"
+                      >
+                        <Download className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => copyToClipboard(snapshot.idl_hash)}
+                        title="Copy hash"
+                      >
+                        <Copy className="h-4 w-4" />
+                      </Button>
+                    </div>
                   </div>
                 ))}
                 
@@ -430,6 +477,63 @@ export function ProgramDetail({ programId }: ProgramDetailProps) {
           </CardContent>
         </Card>
       </div>
+
+      {/* Snapshot Viewer Modal */}
+      {viewingSnapshot && (
+        <div
+          className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4"
+          onClick={() => setViewingSnapshot(null)}
+        >
+          <div
+            className="bg-background rounded-lg shadow-lg max-w-4xl w-full max-h-[90vh] flex flex-col"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Modal Header */}
+            <div className="flex items-center justify-between p-4 border-b">
+              <div className="flex-1 min-w-0">
+                <h3 className="text-lg font-semibold">IDL Snapshot</h3>
+                <p className="text-sm text-muted-foreground">
+                  Hash: {formatHash(viewingSnapshot.idl_hash)} • {formatRelativeTime(viewingSnapshot.fetched_at)}
+                </p>
+              </div>
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => downloadSnapshot(viewingSnapshot)}
+                >
+                  <Download className="h-4 w-4 mr-2" />
+                  Download
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setViewingSnapshot(null)}
+                >
+                  <X className="h-4 w-4" />
+                </Button>
+              </div>
+            </div>
+
+            {/* Modal Content */}
+            <div className="flex-1 overflow-auto p-4">
+              <SyntaxHighlighter
+                language="json"
+                style={github}
+                customStyle={{
+                  margin: 0,
+                  borderRadius: '0.5rem',
+                  fontSize: '12px',
+                  lineHeight: '1.5',
+                }}
+                showLineNumbers={true}
+              >
+                {JSON.stringify(viewingSnapshot.idl_content, null, 2)}
+              </SyntaxHighlighter>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
