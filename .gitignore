@@ -42,3 +42,4 @@ yarn-error.log*
 next-env.d.ts
 
 supabase/.temp
+.claude/settings.local.json

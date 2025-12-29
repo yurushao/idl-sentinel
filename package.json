@@ -7,7 +7,9 @@
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
-    "type-check": "tsc --noEmit"
+    "type-check": "tsc --noEmit",
+    "format": "prettier --write .",
+    "format:check": "prettier --check ."
   },
   "dependencies": {
     "@coral-xyz/anchor": "^0.29.0",
@@ -47,6 +49,8 @@
     "eslint": "^9",
     "eslint-config-next": "16.0.1",
     "postcss": "^8.5.6",
+    "prettier": "^3.7.4",
+    "prettier-plugin-tailwindcss": "^0.6.10",
     "tailwindcss": "^3.4.0",
     "typescript": "^5"
   }
