@@ -1,19 +1,18 @@
-import { Layout } from '@/components/layout/layout'
-import { StatsCards } from '@/components/dashboard/stats-cards'
-import { RecentChanges } from '@/components/dashboard/recent-changes'
-import { MonitoredPrograms } from '@/components/dashboard/monitored-programs'
+import { Layout } from "@/components/layout/layout";
+import { StatsCards } from "@/components/dashboard/stats-cards";
+import { RecentChanges } from "@/components/dashboard/recent-changes";
+import { MonitoredPrograms } from "@/components/dashboard/monitored-programs";
 
 export default function Home() {
   return (
     <Layout>
       <div className="space-y-6 sm:space-y-8">
         {/* Hero Section */}
-        <div className="text-center space-y-3 sm:space-y-4">
-          <h1 className="text-2xl sm:text-3xl font-bold text-foreground">
-            Dashboard
-          </h1>
-          <p className="text-sm sm:text-base text-muted-foreground max-w-2xl mx-auto px-4">
-            Monitor Solana program IDL changes in real-time with comprehensive tracking and instant notifications
+        <div className="space-y-3 text-center sm:space-y-4">
+          <h1 className="text-2xl font-bold text-foreground sm:text-3xl">IDL Sentinel</h1>
+          <p className="mx-auto max-w-2xl px-4 text-sm text-muted-foreground sm:text-base">
+            Monitor Solana program IDL changes in real-time with comprehensive tracking and instant
+            notifications
           </p>
         </div>
 
@@ -27,5 +26,5 @@ export default function Home() {
         </div>
       </div>
     </Layout>
-  )
+  );
 }

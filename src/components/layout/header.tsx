@@ -10,7 +10,6 @@ import { useWallet } from "@solana/wallet-adapter-react";
 import { Button } from "@/components/ui/button";
 
 const navigation = [
-  { name: "Dashboard", href: "/", icon: Monitor },
   { name: "Programs", href: "/programs", icon: Blocks },
   { name: "Changes", href: "/changes", icon: Bell },
   { name: "Settings", href: "/settings", icon: Settings },
@@ -34,7 +33,7 @@ export function Header() {
               </div>
             </Link>
 
-            <nav className="hidden md:flex items-center space-x-1">
+            <nav className="hidden items-center space-x-1 md:flex">
               {navigation.map((item) => {
                 const Icon = item.icon;
 
@@ -42,7 +41,7 @@ export function Header() {
                   <Link
                     key={item.name}
                     href={item.href}
-                    className="flex items-center space-x-2 px-3 py-2 rounded-md text-sm font-medium transition-colors text-muted-foreground hover:bg-accent hover:text-accent-foreground"
+                    className="flex items-center space-x-2 rounded-md px-3 py-2 text-sm font-medium text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground"
                   >
                     <Icon className="h-4 w-4" />
                     <span>{item.name}</span>
@@ -62,18 +61,14 @@ export function Header() {
               className="md:hidden"
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
             >
-              {mobileMenuOpen ? (
-                <X className="h-5 w-5" />
-              ) : (
-                <Menu className="h-5 w-5" />
-              )}
+              {mobileMenuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
             </Button>
           </div>
         </div>
 
         {/* Mobile menu */}
         {mobileMenuOpen && (
-          <div className="md:hidden border-t py-4">
+          <div className="border-t py-4 md:hidden">
             <nav className="flex flex-col space-y-2">
               {navigation.map((item) => {
                 const Icon = item.icon;
@@ -84,7 +79,7 @@ export function Header() {
                     key={item.name}
                     href={item.href}
                     onClick={() => setMobileMenuOpen(false)}
-                    className={`flex items-center space-x-3 px-3 py-2 rounded-md text-sm font-medium transition-colors ${
+                    className={`flex items-center space-x-3 rounded-md px-3 py-2 text-sm font-medium transition-colors ${
                       isActive
                         ? "bg-accent text-accent-foreground"
                         : "text-muted-foreground hover:bg-accent hover:text-accent-foreground"
@@ -132,7 +127,7 @@ function WalletButton() {
 
       // If we have a previous wallet and it's different, user switched wallets
       if (previousWalletRef.current && previousWalletRef.current !== connectedAddress) {
-        console.log('Wallet switched, re-authenticating...');
+        console.log("Wallet switched, re-authenticating...");
         signOut().then(() => {
           setHasAttemptedAutoSignIn(false);
           previousWalletRef.current = null;
@@ -150,7 +145,7 @@ function WalletButton() {
       setHasAttemptedAutoSignIn(true);
       signIn().catch((error) => {
         // If user cancels, disconnect wallet so they can try again
-        console.log('Sign-in cancelled or failed:', error.message || error);
+        console.log("Sign-in cancelled or failed:", error.message || error);
         disconnect();
       });
     }
@@ -158,9 +153,7 @@ function WalletButton() {
 
   // Prevent hydration mismatch by not rendering wallet button on server
   if (!mounted) {
-    return (
-      <div className="h-10 w-[140px] bg-muted/50 rounded-md animate-pulse" />
-    );
+    return <div className="h-10 w-[140px] animate-pulse rounded-md bg-muted/50" />;
   }
 
   if (!connected) {
@@ -174,7 +167,7 @@ function WalletButton() {
   if (connected && !isAuthenticated && isLoading) {
     return (
       <Button disabled={true} size="sm">
-        <Loader2 className="h-4 w-4 animate-spin mr-2" />
+        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
         Signing in...
       </Button>
     );
