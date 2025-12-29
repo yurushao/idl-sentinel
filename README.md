@@ -37,30 +37,30 @@ Track modifications to Solana program IDLs in real-time and receive notification
 
 3. **Set up the database**:
 
-   a. Create a new Supabase project at [https://supabase.com](https://supabase.com)
-
-   b. Open the SQL Editor in your Supabase dashboard
-
-   c. Copy and paste the contents of `supabase/schema.sql` into the SQL editor and run it
-
-   d. After first login with your wallet, set yourself as admin:
-      ```sql
-      UPDATE users SET is_admin = true
-      WHERE wallet_address = 'YOUR_WALLET_ADDRESS';
-      ```
-
-   See `supabase/README.md` for detailed setup instructions.
-
-   **Database Tables:**
-   - `users`: Authenticated users via wallet
-   - `monitored_programs`: Programs being monitored
-   - `idl_snapshots`: Historical IDL snapshots
-   - `idl_changes`: Detected changes with severity
-   - `user_watchlist`: User program subscriptions
-   - `telegram_connection_tokens`: Telegram auth tokens
-   - `monitoring_logs`: System logs and activity tracking
+   See [supabase/README.md](supabase/README.md) for complete database setup instructions.
 
 4. **Run the development server**:
    ```bash
    pnpm dev
    ```
+
+## User Roles & Permissions
+
+### Admin Users
+
+- **Add/Edit/Delete** monitored programs
+- Full access to all features
+- Set via SQL: `UPDATE users SET is_admin = true WHERE wallet_address = 'YOUR_WALLET'`
+
+### Regular Users
+
+- **View** all monitored programs
+- **Subscribe** to programs of interest via watchlist
+- **Receive notifications** for watched programs only
+- Configure personal Slack/Telegram notification settings
+- Cannot add or modify programs (admin-only)
+
+## Notifications
+
+- **Slack**: User-configurable webhook URLs
+- **Telegram**: Shared bot with per-user connections

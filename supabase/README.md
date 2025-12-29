@@ -24,20 +24,16 @@ This directory contains the database schema for IDL Sentinel.
 
 ### Option 2: Using Supabase CLI
 
-1. **Install Supabase CLI**:
+1. **Link to your project**:
    ```bash
-   npm install -g supabase
+   npx supabase link --project-ref your-project-ref
    ```
 
-2. **Link to your project**:
-   ```bash
-   supabase link --project-ref your-project-ref
-   ```
+2. **Apply the schema** (if fresh database):
+   - Run the contents of `schema.sql` in the Supabase SQL Editor
+   - Or use the CLI after creating an initial migration from schema.sql
 
-3. **Run the schema**:
-   ```bash
-   supabase db reset
-   ```
+Note: The CLI is primarily used for syncing schema changes, not initial setup.
 
 ## Database Schema Overview
 
@@ -72,21 +68,34 @@ The database consists of the following tables:
 - **monitoring_logs**: System logs
   - Debugging and monitoring information
 
-## Migrations
+## Schema Management
 
-The `migrations/` directory contains individual migration files showing the evolution of the schema. These are **for reference only** - new deployments should use `schema.sql` directly.
+The `schema.sql` file is the **single source of truth** for the database schema. It contains the complete, final state of all tables, indexes, policies, and triggers.
 
-Migration history:
-- `001_initial_schema.sql` - Initial tables and indexes
-- `002_grant_permissions.sql` - Set up permissions
-- `003_add_auth_users.sql` - Added users table
-- `004_add_admin_role.sql` - Added admin functionality
-- `005_add_user_watchlist.sql` - Added watchlist feature
-- `006_add_slack_notifications.sql` - Added Slack support
-- `007_drop_notification_settings.sql` - Removed legacy table
-- `008_add_user_telegram.sql` - Added Telegram support
-- `009_shared_telegram_bot.sql` - Switched to shared bot model
-- `010_telegram_connection_tokens.sql` - Added connection tokens
+### For New Deployments
+
+Simply run `schema.sql` in your Supabase SQL Editor - this creates the entire database schema in one go.
+
+### For Schema Updates
+
+When making changes to the database:
+
+1. Update `schema.sql` to reflect the new desired state
+2. Use Supabase CLI to sync changes:
+   ```bash
+   # Link to your project (first time only)
+   npx supabase link --project-ref your-project-ref
+
+   # Pull current remote schema to see what changed
+   npx supabase db pull
+
+   # Review the generated migration, then push it
+   npx supabase db push
+   ```
+
+### Migrations Directory
+
+The `migrations/` directory is **not used** in this project. All schema changes should be made by updating `schema.sql` and using the Supabase CLI to sync.
 
 ## Security
 
