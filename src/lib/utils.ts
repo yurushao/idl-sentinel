@@ -225,3 +225,33 @@ export function getSeverityDotColor(severity: string): string {
 export function getSeverityBadgeColor(severity: string): string {
   return severityBadgeColors[severity as keyof typeof severityBadgeColors] || 'bg-gray-500 text-white border-gray-500 hover:bg-gray-600'
 }
+
+/**
+ * Supported Solana explorers
+ */
+export type SolanaExplorer = 'explorer.solana.com' | 'solscan.io'
+
+/**
+ * Generates a Solana explorer URL for a given address
+ * @param address - The Solana address (program, account, transaction, etc.)
+ * @param explorer - The preferred explorer
+ * @param network - The Solana network (optional, defaults to mainnet-beta)
+ * @returns The full URL to view the address in the explorer
+ */
+export function getExplorerUrl(
+  address: string,
+  explorer: SolanaExplorer = 'explorer.solana.com',
+  network?: string
+): string {
+  const networkParam = network && network !== 'mainnet-beta' ? `?cluster=${network}` : ''
+
+  if (explorer === 'solscan.io') {
+    const clusterParam = network && network !== 'mainnet-beta'
+      ? `?cluster=${network}`
+      : ''
+    return `https://solscan.io/account/${address}${clusterParam}`
+  }
+
+  // Default to explorer.solana.com
+  return `https://explorer.solana.com/address/${address}${networkParam}`
+}

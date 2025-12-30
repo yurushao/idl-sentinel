@@ -16,7 +16,7 @@ export async function GET(request: NextRequest) {
 
     const { data, error } = await supabaseAdmin
       .from('users')
-      .select('wallet_address, slack_webhook_url, telegram_chat_id, telegram_username, is_admin, created_at, last_login_at')
+      .select('wallet_address, slack_webhook_url, telegram_chat_id, telegram_username, preferred_explorer, is_admin, created_at, last_login_at')
       .eq('id', user.userId)
       .single()
 
@@ -49,7 +49,7 @@ export async function PUT(request: NextRequest) {
     }
 
     const body = await request.json()
-    const { slack_webhook_url, telegram_chat_id } = body
+    const { slack_webhook_url, telegram_chat_id, preferred_explorer } = body
 
     const updates: any = {}
 
@@ -73,6 +73,18 @@ export async function PUT(request: NextRequest) {
       if (telegram_chat_id === null) {
         updates.telegram_chat_id = null
         updates.telegram_username = null
+      }
+    }
+
+    // Handle preferred explorer
+    if (preferred_explorer !== undefined) {
+      if (preferred_explorer === 'explorer.solana.com' || preferred_explorer === 'solscan.io') {
+        updates.preferred_explorer = preferred_explorer
+      } else {
+        return NextResponse.json(
+          { error: 'Invalid explorer preference. Must be either "explorer.solana.com" or "solscan.io"' },
+          { status: 400 }
+        )
       }
     }
 

@@ -19,6 +19,7 @@ CREATE TABLE IF NOT EXISTS users (
     slack_webhook_url TEXT,
     telegram_chat_id TEXT,
     telegram_username TEXT,
+    preferred_explorer TEXT DEFAULT 'explorer.solana.com' CHECK (preferred_explorer IN ('explorer.solana.com', 'solscan.io')),
     created_at TIMESTAMPTZ DEFAULT NOW(),
     last_login_at TIMESTAMPTZ DEFAULT NOW()
 );
@@ -35,6 +36,7 @@ COMMENT ON COLUMN users.is_admin IS 'Flag indicating if user has admin privilege
 COMMENT ON COLUMN users.slack_webhook_url IS 'User-specific Slack webhook URL for change notifications';
 COMMENT ON COLUMN users.telegram_chat_id IS 'User-specific Telegram chat ID for notifications';
 COMMENT ON COLUMN users.telegram_username IS 'Telegram username for better UX';
+COMMENT ON COLUMN users.preferred_explorer IS 'Preferred Solana explorer (explorer.solana.com or solscan.io)';
 
 -- =====================================================
 -- MONITORED PROGRAMS TABLE

@@ -8,7 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { formatRelativeTime, truncateString } from "@/lib/utils";
+import { formatRelativeTime, truncateString, getExplorerUrl, type SolanaExplorer } from "@/lib/utils";
 import {
   ArrowLeft,
   Edit,
@@ -75,10 +75,27 @@ export function ProgramDetail({ programId }: ProgramDetailProps) {
   const [error, setError] = useState<string | null>(null);
   const [refreshing, setRefreshing] = useState(false);
   const [viewingSnapshot, setViewingSnapshot] = useState<Snapshot | null>(null);
+  const [preferredExplorer, setPreferredExplorer] = useState<SolanaExplorer>('explorer.solana.com');
 
   useEffect(() => {
     fetchProgramData();
+    fetchUserPreferences();
   }, [programId]);
+
+  const fetchUserPreferences = async () => {
+    try {
+      const response = await fetch('/api/user/settings');
+      if (response.ok) {
+        const data = await response.json();
+        if (data.user?.preferred_explorer) {
+          setPreferredExplorer(data.user.preferred_explorer);
+        }
+      }
+    } catch (err) {
+      // Silently fail and use default explorer
+      console.error('Error fetching user preferences:', err);
+    }
+  };
 
   const fetchProgramData = async () => {
     try {
@@ -339,7 +356,7 @@ export function ProgramDetail({ programId }: ProgramDetailProps) {
                 </Button>
                 <Button variant="ghost" size="sm" asChild>
                   <a
-                    href={`https://explorer.solana.com/address/${program.program_id}`}
+                    href={getExplorerUrl(program.program_id, preferredExplorer)}
                     target="_blank"
                     rel="noopener noreferrer"
                   >

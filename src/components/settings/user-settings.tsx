@@ -13,6 +13,7 @@ interface UserSettings {
   slack_webhook_url: string | null
   telegram_chat_id: string | null
   telegram_username: string | null
+  preferred_explorer: 'explorer.solana.com' | 'solscan.io'
   is_admin: boolean
   created_at: string
   last_login_at: string
@@ -22,6 +23,7 @@ export function UserSettings() {
   const { isAuthenticated, isLoading: authLoading, walletAddress } = useAuth()
   const [settings, setSettings] = useState<UserSettings | null>(null)
   const [slackWebhook, setSlackWebhook] = useState('')
+  const [preferredExplorer, setPreferredExplorer] = useState<'explorer.solana.com' | 'solscan.io'>('explorer.solana.com')
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [testingSlack, setTestingSlack] = useState(false)
@@ -71,6 +73,7 @@ export function UserSettings() {
       const data = await response.json()
       setSettings(data.user)
       setSlackWebhook(data.user.slack_webhook_url || '')
+      setPreferredExplorer(data.user.preferred_explorer || 'explorer.solana.com')
     } catch (err) {
       console.error('Error fetching settings:', err)
       setError(err instanceof Error ? err.message : 'Failed to fetch settings')
@@ -92,6 +95,7 @@ export function UserSettings() {
         },
         body: JSON.stringify({
           slack_webhook_url: slackWebhook || null,
+          preferred_explorer: preferredExplorer,
         }),
       })
 
@@ -374,6 +378,43 @@ export function UserSettings() {
               </div>
             </div>
           )}
+        </div>
+      </Card>
+
+      <Card className="p-6">
+        <h2 className="text-xl font-semibold mb-2">Explorer Preference</h2>
+        <p className="text-sm text-muted-foreground mb-4">
+          Choose your preferred Solana explorer for viewing program addresses
+        </p>
+        <div className="space-y-3">
+          <label className="flex items-center space-x-3 cursor-pointer">
+            <input
+              type="radio"
+              name="explorer"
+              value="explorer.solana.com"
+              checked={preferredExplorer === 'explorer.solana.com'}
+              onChange={(e) => setPreferredExplorer(e.target.value as 'explorer.solana.com' | 'solscan.io')}
+              className="h-4 w-4 text-primary border-gray-300 focus:ring-2 focus:ring-primary"
+            />
+            <div className="flex-1">
+              <div className="text-sm font-medium">Solana Explorer</div>
+              <div className="text-xs text-muted-foreground">explorer.solana.com</div>
+            </div>
+          </label>
+          <label className="flex items-center space-x-3 cursor-pointer">
+            <input
+              type="radio"
+              name="explorer"
+              value="solscan.io"
+              checked={preferredExplorer === 'solscan.io'}
+              onChange={(e) => setPreferredExplorer(e.target.value as 'explorer.solana.com' | 'solscan.io')}
+              className="h-4 w-4 text-primary border-gray-300 focus:ring-2 focus:ring-primary"
+            />
+            <div className="flex-1">
+              <div className="text-sm font-medium">Solscan</div>
+              <div className="text-xs text-muted-foreground">solscan.io</div>
+            </div>
+          </label>
         </div>
       </Card>
 
