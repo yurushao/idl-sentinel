@@ -5,6 +5,7 @@ import { Card } from '@/components/ui/card'
 import { ArrowRight, Plus, Minus, Edit } from 'lucide-react'
 import dynamic from 'next/dynamic'
 import { useMemo, useState } from 'react'
+import { useTheme } from '@/lib/theme/theme-provider'
 
 // Dynamically import ReactDiffViewer to avoid SSR issues
 const ReactDiffViewer = dynamic(() => import('react-diff-viewer'), {
@@ -22,6 +23,7 @@ interface ChangeDetailsProps {
 }
 
 export function ChangeDetails({ details }: ChangeDetailsProps) {
+  const { theme } = useTheme()
   const isAddition = details.changeType.includes('added')
   const isRemoval = details.changeType.includes('removed')
   const isModification = details.changeType.includes('modified')
@@ -87,7 +89,7 @@ export function ChangeDetails({ details }: ChangeDetailsProps) {
                   oldValue={oldValueStr}
                   newValue={newValueStr}
                   splitView={splitView}
-                  useDarkTheme={false}
+                  useDarkTheme={theme === 'dark'}
                   styles={{
                     variables: {
                       light: {
@@ -105,6 +107,22 @@ export function ChangeDetails({ details }: ChangeDetailsProps) {
                         gutterBackgroundDark: 'hsl(var(--muted))',
                         highlightBackground: '#fffbdd',
                         highlightGutterBackground: '#fff5b1',
+                      },
+                      dark: {
+                        diffViewerBackground: 'hsl(var(--background))',
+                        diffViewerColor: 'hsl(var(--foreground))',
+                        addedBackground: 'rgba(34, 197, 94, 0.2)',
+                        addedColor: 'rgb(134, 239, 172)',
+                        removedBackground: 'rgba(239, 68, 68, 0.2)',
+                        removedColor: 'rgb(252, 165, 165)',
+                        wordAddedBackground: 'rgba(34, 197, 94, 0.4)',
+                        wordRemovedBackground: 'rgba(239, 68, 68, 0.4)',
+                        addedGutterBackground: 'rgba(34, 197, 94, 0.3)',
+                        removedGutterBackground: 'rgba(239, 68, 68, 0.3)',
+                        gutterBackground: 'hsl(var(--muted))',
+                        gutterBackgroundDark: 'hsl(var(--muted))',
+                        highlightBackground: 'rgba(234, 179, 8, 0.2)',
+                        highlightGutterBackground: 'rgba(234, 179, 8, 0.3)',
                       },
                     },
                     line: {
@@ -133,8 +151,8 @@ export function ChangeDetails({ details }: ChangeDetailsProps) {
                 {isAddition ? 'Added Value' : 'Removed Value'}
               </div>
               <div className="border rounded-lg overflow-hidden">
-                <div className={`p-3 ${isAddition ? 'bg-green-50' : 'bg-red-50'}`}>
-                  <pre className="text-xs overflow-x-auto whitespace-pre-wrap font-mono">
+                <div className={`p-3 ${isAddition ? 'bg-green-50 dark:bg-green-950/30' : 'bg-red-50 dark:bg-red-950/30'}`}>
+                  <pre className={`text-xs overflow-x-auto whitespace-pre-wrap font-mono ${isAddition ? 'text-green-900 dark:text-green-100' : 'text-red-900 dark:text-red-100'}`}>
                     {isAddition ? newValueStr : oldValueStr}
                   </pre>
                 </div>
