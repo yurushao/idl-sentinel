@@ -101,7 +101,7 @@ export function RecentChanges() {
           </div>
         ) : (
           <div className="space-y-3">
-            {changes.slice(0, 8).map((change) => (
+            {changes.slice(0, 5).map((change) => (
               <Link
                 key={change.id}
                 href="/changes"
