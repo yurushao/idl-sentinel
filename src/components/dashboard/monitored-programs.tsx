@@ -7,6 +7,7 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { formatRelativeTime, truncateString } from '@/lib/utils'
 import { ExternalLink, Plus, Code, Activity, AlertCircle } from 'lucide-react'
+import { useAuth } from '@/lib/auth/auth-context'
 
 interface MonitoredProgram {
   id: string
@@ -19,6 +20,7 @@ interface MonitoredProgram {
 }
 
 export function MonitoredPrograms() {
+  const { isAdmin } = useAuth()
   const [programs, setPrograms] = useState<MonitoredProgram[]>([])
   const [loading, setLoading] = useState(true)
 
@@ -81,12 +83,14 @@ export function MonitoredPrograms() {
                 <ExternalLink className="h-3 w-3" />
               </Button>
             </Link>
-            <Link href="/programs/new" className="flex-1 sm:flex-initial">
-              <Button size="sm" className="flex items-center justify-center space-x-1 w-full">
-                <Plus className="h-3 w-3" />
-                <span>Add</span>
-              </Button>
-            </Link>
+            {isAdmin && (
+              <Link href="/programs/new" className="flex-1 sm:flex-initial">
+                <Button size="sm" className="flex items-center justify-center space-x-1 w-full">
+                  <Plus className="h-3 w-3" />
+                  <span>Add</span>
+                </Button>
+              </Link>
+            )}
           </div>
         </div>
       </CardHeader>
@@ -95,13 +99,19 @@ export function MonitoredPrograms() {
           <div className="text-center py-8">
             <AlertCircle className="h-8 w-8 text-muted-foreground mx-auto mb-2" />
             <p className="text-muted-foreground font-medium mb-2">No programs are being monitored yet</p>
-            <p className="text-sm text-muted-foreground/70 mb-4">Start monitoring your first Solana program</p>
-            <Link href="/programs/new">
-              <Button className="flex items-center space-x-2">
-                <Plus className="h-4 w-4" />
-                <span>Add Your First Program</span>
-              </Button>
-            </Link>
+            <p className="text-sm text-muted-foreground/70 mb-4">
+              {isAdmin
+                ? "Start monitoring your first Solana program"
+                : "No programs have been added for monitoring"}
+            </p>
+            {isAdmin && (
+              <Link href="/programs/new">
+                <Button className="flex items-center space-x-2">
+                  <Plus className="h-4 w-4" />
+                  <span>Add Your First Program</span>
+                </Button>
+              </Link>
+            )}
           </div>
         ) : (
           <div className="space-y-3">
