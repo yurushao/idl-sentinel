@@ -25,6 +25,8 @@ interface IdlChange {
   };
 }
 
+const LIMIT = 8;
+
 export function RecentChanges() {
   const [changes, setChanges] = useState<IdlChange[]>([]);
   const [loading, setLoading] = useState(true);
@@ -35,7 +37,7 @@ export function RecentChanges() {
 
   const fetchRecentChanges = async () => {
     try {
-      const response = await fetch("/api/changes?limit=10");
+      const response = await fetch("/api/changes?limit=" + LIMIT);
       if (response.ok) {
         const data = await response.json();
         setChanges(data.changes || []);
@@ -60,7 +62,7 @@ export function RecentChanges() {
         </CardHeader>
         <CardContent>
           <div className="space-y-3">
-            {[...Array(5)].map((_, i) => (
+            {[...Array(LIMIT)].map((_, i) => (
               <div key={i} className="flex items-center space-x-3 rounded-lg border p-3">
                 <div className="h-2 w-2 animate-pulse rounded-full bg-muted" />
                 <div className="flex-1 space-y-2">
@@ -101,11 +103,11 @@ export function RecentChanges() {
           </div>
         ) : (
           <div className="space-y-3">
-            {changes.slice(0, 5).map((change) => (
+            {changes.slice(0, LIMIT).map((change) => (
               <Link
                 key={change.id}
                 href="/changes"
-                className="flex items-start gap-2 rounded-lg border p-3 transition-colors hover:bg-muted/50 sm:gap-3 cursor-pointer block"
+                className="block flex cursor-pointer items-start gap-2 rounded-lg border p-3 transition-colors hover:bg-muted/50 sm:gap-3"
               >
                 <div
                   className={`mt-2 h-2 w-2 flex-shrink-0 rounded-full ${
@@ -139,15 +141,13 @@ export function RecentChanges() {
                 </div>
               </Link>
             ))}
-            {changes.length > 5 && (
-              <div className="pt-4 text-center">
-                <Link href="/changes" className="block sm:inline-block">
-                  <button className="w-full rounded-md border border-input bg-background px-4 py-2 text-sm transition-colors hover:bg-accent hover:text-accent-foreground sm:w-auto">
-                    View all {changes.length} changes
-                  </button>
-                </Link>
-              </div>
-            )}
+            <div className="pt-4 text-center">
+              <Link href="/changes" className="block sm:inline-block">
+                <button className="w-full rounded-md border border-input bg-background px-4 py-2 text-sm transition-colors hover:bg-accent hover:text-accent-foreground sm:w-auto">
+                  View all changes
+                </button>
+              </Link>
+            </div>
           </div>
         )}
       </CardContent>
