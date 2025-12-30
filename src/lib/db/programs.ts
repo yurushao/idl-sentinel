@@ -157,5 +157,27 @@ export async function getAllPrograms(): Promise<MonitoredProgram[]> {
     throw new Error(`Failed to fetch programs: ${error.message}`)
   }
 
-  return data || []
+  if (!data || data.length === 0) {
+    return []
+  }
+
+  // Fetch last_checked_at for all programs
+  const programsWithLastChecked = await Promise.all(
+    data.map(async (program) => {
+      const { data: latestLog } = await supabaseAdmin
+        .from('monitoring_logs')
+        .select('created_at')
+        .eq('program_id', program.id)
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .single()
+
+      return {
+        ...program,
+        last_checked_at: latestLog?.created_at || null
+      }
+    })
+  )
+
+  return programsWithLastChecked
 }

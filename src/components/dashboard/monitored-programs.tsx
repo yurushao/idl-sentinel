@@ -17,6 +17,7 @@ interface MonitoredProgram {
   is_active: boolean
   created_at: string
   updated_at: string
+  last_checked_at?: string | null
 }
 
 export function MonitoredPrograms() {
@@ -137,7 +138,9 @@ export function MonitoredPrograms() {
                       {truncateString(program.program_id, 30)}
                     </p>
                     <p className="text-xs text-muted-foreground">
-                      Added {formatRelativeTime(program.created_at)}
+                      {program.last_checked_at
+                        ? `Last checked ${formatRelativeTime(program.last_checked_at)}`
+                        : 'Never checked'}
                     </p>
                   </div>
                 </div>
