@@ -35,6 +35,8 @@ export function UserSettings() {
   const [saveSuccess, setSaveSuccess] = useState(false)
   const [slackTestSuccess, setSlackTestSuccess] = useState<boolean | null>(null)
   const [telegramTestSuccess, setTelegramTestSuccess] = useState<boolean | null>(null)
+  const [savingExplorer, setSavingExplorer] = useState(false)
+  const [explorerSaveSuccess, setExplorerSaveSuccess] = useState(false)
 
   // Ref to store polling interval for cleanup
   const pollIntervalRef = useRef<NodeJS.Timeout | null>(null)
@@ -82,6 +84,44 @@ export function UserSettings() {
     }
   }
 
+  const saveExplorerPreference = async (explorer: 'explorer.solana.com' | 'solscan.io') => {
+    try {
+      setSavingExplorer(true)
+      setError(null)
+      setExplorerSaveSuccess(false)
+
+      const response = await fetch('/api/user/settings', {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          preferred_explorer: explorer,
+        }),
+      })
+
+      if (!response.ok) {
+        const errorData = await response.json()
+        throw new Error(errorData.error || 'Failed to save explorer preference')
+      }
+
+      const data = await response.json()
+      setSettings(data.user)
+      setPreferredExplorer(explorer)
+      setExplorerSaveSuccess(true)
+
+      // Clear success message after 2 seconds
+      setTimeout(() => setExplorerSaveSuccess(false), 2000)
+    } catch (err) {
+      console.error('Error saving explorer preference:', err)
+      setError(err instanceof Error ? err.message : 'Failed to save explorer preference')
+      // Revert to previous value on error
+      setPreferredExplorer(settings?.preferred_explorer || 'explorer.solana.com')
+    } finally {
+      setSavingExplorer(false)
+    }
+  }
+
   const saveSettings = async () => {
     try {
       setSaving(true)
@@ -95,7 +135,6 @@ export function UserSettings() {
         },
         body: JSON.stringify({
           slack_webhook_url: slackWebhook || null,
-          preferred_explorer: preferredExplorer,
         }),
       })
 
@@ -382,7 +421,21 @@ export function UserSettings() {
       </Card>
 
       <Card className="p-6">
-        <h2 className="text-xl font-semibold mb-2">Explorer Preference</h2>
+        <div className="flex items-center justify-between mb-2">
+          <h2 className="text-xl font-semibold">Explorer Preference</h2>
+          {savingExplorer && (
+            <span className="text-sm text-muted-foreground flex items-center">
+              <Loader2 className="h-3 w-3 animate-spin mr-1" />
+              Saving...
+            </span>
+          )}
+          {explorerSaveSuccess && !savingExplorer && (
+            <span className="text-sm text-green-600 flex items-center">
+              <Check className="h-3 w-3 mr-1" />
+              Saved
+            </span>
+          )}
+        </div>
         <p className="text-sm text-muted-foreground mb-4">
           Choose your preferred Solana explorer for viewing program addresses
         </p>
@@ -393,8 +446,9 @@ export function UserSettings() {
               name="explorer"
               value="explorer.solana.com"
               checked={preferredExplorer === 'explorer.solana.com'}
-              onChange={(e) => setPreferredExplorer(e.target.value as 'explorer.solana.com' | 'solscan.io')}
-              className="h-4 w-4 text-primary border-gray-300 focus:ring-2 focus:ring-primary"
+              onChange={(e) => saveExplorerPreference(e.target.value as 'explorer.solana.com' | 'solscan.io')}
+              disabled={savingExplorer}
+              className="h-4 w-4 text-primary border-gray-300 focus:ring-2 focus:ring-primary disabled:opacity-50"
             />
             <div className="flex-1">
               <div className="text-sm font-medium">Solana Explorer</div>
@@ -407,8 +461,9 @@ export function UserSettings() {
               name="explorer"
               value="solscan.io"
               checked={preferredExplorer === 'solscan.io'}
-              onChange={(e) => setPreferredExplorer(e.target.value as 'explorer.solana.com' | 'solscan.io')}
-              className="h-4 w-4 text-primary border-gray-300 focus:ring-2 focus:ring-primary"
+              onChange={(e) => saveExplorerPreference(e.target.value as 'explorer.solana.com' | 'solscan.io')}
+              disabled={savingExplorer}
+              className="h-4 w-4 text-primary border-gray-300 focus:ring-2 focus:ring-primary disabled:opacity-50"
             />
             <div className="flex-1">
               <div className="text-sm font-medium">Solscan</div>
