@@ -6,6 +6,25 @@ module.exports = {
     "./src/components/**/*.{js,ts,jsx,tsx,mdx}",
     "./src/app/**/*.{js,ts,jsx,tsx,mdx}",
   ],
+  safelist: [
+    // Severity dot colors
+    'bg-red-500',
+    'bg-orange-500',
+    'bg-yellow-500',
+    'bg-blue-500',
+    'bg-gray-500',
+    // Severity badge colors with hover states
+    'hover:bg-red-600',
+    'hover:bg-orange-600',
+    'hover:bg-yellow-600',
+    'hover:bg-blue-600',
+    'hover:bg-gray-600',
+    'border-red-500',
+    'border-orange-500',
+    'border-yellow-500',
+    'border-blue-500',
+    'border-gray-500',
+  ],
   theme: {
     container: {
       center: true,
