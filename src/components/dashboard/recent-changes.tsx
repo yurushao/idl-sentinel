@@ -1,46 +1,51 @@
-'use client'
+"use client";
 
-import { useEffect, useState } from 'react'
-import Link from 'next/link'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { Badge } from '@/components/ui/badge'
-import { formatRelativeTime, severityDotColors, severityBadgeColors, truncateString } from '@/lib/utils'
-import { ExternalLink, Clock, AlertCircle } from 'lucide-react'
+import { useEffect, useState } from "react";
+import Link from "next/link";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import {
+  formatRelativeTime,
+  severityDotColors,
+  severityBadgeColors,
+  truncateString,
+} from "@/lib/utils";
+import { ExternalLink, Clock, AlertCircle } from "lucide-react";
 
 interface IdlChange {
-  id: string
-  program_id: string
-  change_type: string
-  severity: 'low' | 'medium' | 'high' | 'critical'
-  change_summary: string
-  detected_at: string
+  id: string;
+  program_id: string;
+  change_type: string;
+  severity: "low" | "medium" | "high" | "critical";
+  change_summary: string;
+  detected_at: string;
   monitored_programs?: {
-    name: string
-    program_id: string
-  }
+    name: string;
+    program_id: string;
+  };
 }
 
 export function RecentChanges() {
-  const [changes, setChanges] = useState<IdlChange[]>([])
-  const [loading, setLoading] = useState(true)
+  const [changes, setChanges] = useState<IdlChange[]>([]);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    fetchRecentChanges()
-  }, [])
+    fetchRecentChanges();
+  }, []);
 
   const fetchRecentChanges = async () => {
     try {
-      const response = await fetch('/api/changes?limit=10')
+      const response = await fetch("/api/changes?limit=10");
       if (response.ok) {
-        const data = await response.json()
-        setChanges(data.changes || [])
+        const data = await response.json();
+        setChanges(data.changes || []);
       }
     } catch (error) {
-      console.error('Error fetching recent changes:', error)
+      console.error("Error fetching recent changes:", error);
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
-  }
+  };
 
   if (loading) {
     return (
@@ -56,18 +61,18 @@ export function RecentChanges() {
         <CardContent>
           <div className="space-y-3">
             {[...Array(5)].map((_, i) => (
-              <div key={i} className="flex items-center space-x-3 p-3 border rounded-lg">
-                <div className="h-2 w-2 rounded-full bg-muted animate-pulse" />
+              <div key={i} className="flex items-center space-x-3 rounded-lg border p-3">
+                <div className="h-2 w-2 animate-pulse rounded-full bg-muted" />
                 <div className="flex-1 space-y-2">
-                  <div className="h-4 bg-muted rounded animate-pulse" />
-                  <div className="h-3 bg-muted/50 rounded w-2/3 animate-pulse" />
+                  <div className="h-4 animate-pulse rounded bg-muted" />
+                  <div className="h-3 w-2/3 animate-pulse rounded bg-muted/50" />
                 </div>
               </div>
             ))}
           </div>
         </CardContent>
       </Card>
-    )
+    );
   }
 
   return (
@@ -77,9 +82,9 @@ export function RecentChanges() {
           <Clock className="h-4 w-4 text-muted-foreground" />
           <CardTitle>Recent Changes</CardTitle>
         </div>
-        <Link 
-          href="/changes" 
-          className="text-sm text-muted-foreground hover:text-foreground flex items-center space-x-1"
+        <Link
+          href="/changes"
+          className="flex items-center space-x-1 text-sm text-muted-foreground hover:text-foreground"
         >
           <span>View all</span>
           <ExternalLink className="h-3 w-3" />
@@ -87,38 +92,44 @@ export function RecentChanges() {
       </CardHeader>
       <CardContent>
         {changes.length === 0 ? (
-          <div className="text-center py-8">
-            <AlertCircle className="h-8 w-8 text-muted-foreground mx-auto mb-2" />
-            <p className="text-muted-foreground font-medium">No recent changes detected</p>
-            <p className="text-sm text-muted-foreground/70 mt-1">Changes will appear here when detected</p>
+          <div className="py-8 text-center">
+            <AlertCircle className="mx-auto mb-2 h-8 w-8 text-muted-foreground" />
+            <p className="font-medium text-muted-foreground">No recent changes detected</p>
+            <p className="mt-1 text-sm text-muted-foreground/70">
+              Changes will appear here when detected
+            </p>
           </div>
         ) : (
           <div className="space-y-3">
-            {changes.slice(0, 5).map((change) => (
-              <div key={change.id} className="flex items-start gap-2 sm:gap-3 p-3 border rounded-lg hover:bg-muted/50 transition-colors">
+            {changes.slice(0, 8).map((change) => (
+              <Link
+                key={change.id}
+                href="/changes"
+                className="flex items-start gap-2 rounded-lg border p-3 transition-colors hover:bg-muted/50 sm:gap-3 cursor-pointer block"
+              >
                 <div
-                  className={`h-2 w-2 rounded-full mt-2 flex-shrink-0 ${
-                    severityDotColors[change.severity] || 'bg-gray-500'
+                  className={`mt-2 h-2 w-2 flex-shrink-0 rounded-full ${
+                    severityDotColors[change.severity] || "bg-gray-500"
                   }`}
                 />
-                <div className="flex-1 min-w-0">
-                  <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1 sm:gap-2 mb-2">
+                <div className="min-w-0 flex-1">
+                  <div className="mb-2 flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between sm:gap-2">
                     <div className="flex flex-wrap items-center gap-2">
-                      <span className="font-medium text-sm">
-                        {change.monitored_programs?.name || 'Unknown Program'}
+                      <span className="text-sm font-medium">
+                        {change.monitored_programs?.name || "Unknown Program"}
                       </span>
                       <Badge variant="outline" className="text-xs">
                         {change.change_type}
                       </Badge>
                       <Badge
                         className={`text-xs ${
-                          severityBadgeColors[change.severity] || 'bg-gray-500 text-white'
+                          severityBadgeColors[change.severity] || "bg-gray-500 text-white"
                         }`}
                       >
                         {change.severity}
                       </Badge>
                     </div>
-                    <span className="text-xs text-muted-foreground whitespace-nowrap">
+                    <span className="whitespace-nowrap text-xs text-muted-foreground">
                       {formatRelativeTime(change.detected_at)}
                     </span>
                   </div>
@@ -126,12 +137,12 @@ export function RecentChanges() {
                     {truncateString(change.change_summary, 100)}
                   </p>
                 </div>
-              </div>
+              </Link>
             ))}
             {changes.length > 5 && (
-              <div className="text-center pt-4">
+              <div className="pt-4 text-center">
                 <Link href="/changes" className="block sm:inline-block">
-                  <button className="w-full sm:w-auto px-4 py-2 border border-input bg-background rounded-md text-sm hover:bg-accent hover:text-accent-foreground transition-colors">
+                  <button className="w-full rounded-md border border-input bg-background px-4 py-2 text-sm transition-colors hover:bg-accent hover:text-accent-foreground sm:w-auto">
                     View all {changes.length} changes
                   </button>
                 </Link>
@@ -141,5 +152,5 @@ export function RecentChanges() {
         )}
       </CardContent>
     </Card>
-  )
+  );
 }
