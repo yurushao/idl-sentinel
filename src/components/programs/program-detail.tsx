@@ -8,7 +8,13 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { formatRelativeTime, truncateString, getExplorerUrl, type SolanaExplorer, severityBadgeColors } from "@/lib/utils";
+import {
+  formatRelativeTime,
+  truncateString,
+  getExplorerUrl,
+  type SolanaExplorer,
+  severityBadgeColors,
+} from "@/lib/utils";
 import {
   ArrowLeft,
   Edit,
@@ -73,7 +79,7 @@ export function ProgramDetail({ programId }: ProgramDetailProps) {
   const [error, setError] = useState<string | null>(null);
   const [refreshing, setRefreshing] = useState(false);
   const [viewingSnapshot, setViewingSnapshot] = useState<Snapshot | null>(null);
-  const [preferredExplorer, setPreferredExplorer] = useState<SolanaExplorer>('explorer.solana.com');
+  const [preferredExplorer, setPreferredExplorer] = useState<SolanaExplorer>("explorer.solana.com");
 
   useEffect(() => {
     fetchProgramData();
@@ -82,7 +88,7 @@ export function ProgramDetail({ programId }: ProgramDetailProps) {
 
   const fetchUserPreferences = async () => {
     try {
-      const response = await fetch('/api/user/settings');
+      const response = await fetch("/api/user/settings");
       if (response.ok) {
         const data = await response.json();
         if (data.user?.preferred_explorer) {
@@ -91,7 +97,7 @@ export function ProgramDetail({ programId }: ProgramDetailProps) {
       }
     } catch (err) {
       // Silently fail and use default explorer
-      console.error('Error fetching user preferences:', err);
+      console.error("Error fetching user preferences:", err);
     }
   };
 
@@ -181,7 +187,6 @@ export function ProgramDetail({ programId }: ProgramDetailProps) {
     document.body.removeChild(link);
     URL.revokeObjectURL(url);
   };
-
 
   if (loading) {
     return (
@@ -414,7 +419,7 @@ export function ProgramDetail({ programId }: ProgramDetailProps) {
 
                 {snapshots.length > 5 && (
                   <Button variant="outline" size="sm" className="w-full">
-                    View All {snapshots.length} Snapshots
+                    View All Snapshots
                   </Button>
                 )}
               </div>
@@ -439,7 +444,13 @@ export function ProgramDetail({ programId }: ProgramDetailProps) {
                 {changes.slice(0, 5).map((change) => (
                   <div key={change.id} className="space-y-2 rounded-lg border p-3">
                     <div className="flex items-center justify-between">
-                      <Badge className={severityBadgeColors[change.severity as keyof typeof severityBadgeColors] || severityBadgeColors.low}>
+                      <Badge
+                        className={
+                          severityBadgeColors[
+                            change.severity as keyof typeof severityBadgeColors
+                          ] || severityBadgeColors.low
+                        }
+                      >
                         {change.severity}
                       </Badge>
                       <span className="text-xs text-muted-foreground">
@@ -456,7 +467,7 @@ export function ProgramDetail({ programId }: ProgramDetailProps) {
 
                 {changes.length > 5 && (
                   <Button variant="outline" size="sm" className="w-full" asChild>
-                    <Link href="/changes">View All {changes.length} Changes</Link>
+                    <Link href="/changes">View All Changes</Link>
                   </Button>
                 )}
               </div>
