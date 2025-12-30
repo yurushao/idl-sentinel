@@ -36,6 +36,23 @@ export async function getProgramById(id: string): Promise<MonitoredProgram | nul
     throw new Error(`Failed to fetch program: ${error.message}`)
   }
 
+  // Fetch the latest monitoring log to get last_checked_at
+  if (data) {
+    const { data: latestLog } = await supabaseAdmin
+      .from('monitoring_logs')
+      .select('created_at')
+      .eq('program_id', id)
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .single()
+
+    // Add last_checked_at to the program data
+    return {
+      ...data,
+      last_checked_at: latestLog?.created_at || null
+    }
+  }
+
   return data
 }
 

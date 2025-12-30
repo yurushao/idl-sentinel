@@ -4,23 +4,7 @@ import { useEffect, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { AlertCircle, TrendingUp, Flag, Layers } from "lucide-react";
-import { getSeverityColor } from "@/lib/utils";
-
-// Get dot color for severity indicators
-const getSeverityDotColor = (severity: string) => {
-  switch (severity) {
-    case "critical":
-      return "bg-red-500";
-    case "high":
-      return "bg-orange-500";
-    case "medium":
-      return "bg-yellow-500";
-    case "low":
-      return "bg-blue-500";
-    default:
-      return "bg-gray-500";
-  }
-};
+import { getSeverityDotColor } from "@/lib/utils";
 
 interface ChangeStatistics {
   total: number;

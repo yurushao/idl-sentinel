@@ -209,6 +209,24 @@ export function getSeverityEmoji(severity: string): string {
 }
 
 /**
+ * Gets severity dot color for severity indicators
+ */
+export function getSeverityDotColor(severity: string): string {
+  switch (severity) {
+    case 'critical':
+      return 'bg-red-500'
+    case 'high':
+      return 'bg-orange-500'
+    case 'medium':
+      return 'bg-yellow-500'
+    case 'low':
+      return 'bg-blue-500'
+    default:
+      return 'bg-gray-500'
+  }
+}
+
+/**
  * Gets severity badge color classes
  */
 export function getSeverityBadgeColor(severity: string): string {

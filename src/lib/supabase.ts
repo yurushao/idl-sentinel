@@ -20,6 +20,7 @@ export interface MonitoredProgram {
   owner_id?: string | null
   created_at: string
   updated_at: string
+  last_checked_at?: string | null
 }
 
 export interface IdlSnapshot {
