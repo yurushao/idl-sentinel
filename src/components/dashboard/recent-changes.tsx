@@ -122,11 +122,8 @@ export function RecentChanges() {
                       {formatRelativeTime(change.detected_at)}
                     </span>
                   </div>
-                  <p className="text-sm text-muted-foreground mb-2">
+                  <p className="text-sm text-muted-foreground">
                     {truncateString(change.change_summary, 100)}
-                  </p>
-                  <p className="text-xs text-muted-foreground font-mono bg-muted px-2 py-1 rounded inline-block break-all">
-                    {truncateString(change.program_id, 20)}
                   </p>
                 </div>
               </div>
