@@ -178,15 +178,15 @@ export function debounce<T extends (...args: any[]) => any>(
 export function getSeverityColor(severity: string): string {
   switch (severity) {
     case 'critical':
-      return 'text-red-600 bg-red-50 border-red-200'
+      return 'text-red-600 bg-red-50 border-red-200 dark:text-red-400 dark:bg-red-950 dark:border-red-800'
     case 'high':
-      return 'text-orange-600 bg-orange-50 border-orange-200'
+      return 'text-orange-600 bg-orange-50 border-orange-200 dark:text-orange-400 dark:bg-orange-950 dark:border-orange-800'
     case 'medium':
-      return 'text-yellow-600 bg-yellow-50 border-yellow-200'
+      return 'text-yellow-600 bg-yellow-50 border-yellow-200 dark:text-yellow-400 dark:bg-yellow-950 dark:border-yellow-800'
     case 'low':
-      return 'text-blue-600 bg-blue-50 border-blue-200'
+      return 'text-blue-600 bg-blue-50 border-blue-200 dark:text-blue-400 dark:bg-blue-950 dark:border-blue-800'
     default:
-      return 'text-gray-600 bg-gray-50 border-gray-200'
+      return 'text-gray-600 bg-gray-50 border-gray-200 dark:text-gray-400 dark:bg-gray-900 dark:border-gray-700'
   }
 }
 

@@ -8,6 +8,7 @@ import { WalletMultiButton } from "@solana/wallet-adapter-react-ui";
 import { useAuth } from "@/lib/auth/auth-context";
 import { useWallet } from "@solana/wallet-adapter-react";
 import { Button } from "@/components/ui/button";
+import { ThemeToggle } from "@/components/theme/theme-toggle";
 
 const navigation = [
   { name: "Programs", href: "/programs", icon: Blocks },
@@ -52,6 +53,7 @@ export function Header() {
           </div>
 
           <div className="flex items-center gap-4">
+            <ThemeToggle />
             <WalletButton />
 
             {/* Mobile menu button */}

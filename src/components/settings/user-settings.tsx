@@ -497,13 +497,13 @@ export function UserSettings() {
               </div>
             ) : (
               <div className="space-y-3">
-                <div className="flex items-center justify-between p-3 bg-green-50 border border-green-200 rounded-md">
+                <div className="flex items-center justify-between p-3 bg-green-50 border border-green-200 rounded-md dark:bg-green-950 dark:border-green-800">
                   <div className="flex items-center">
-                    <Check className="h-4 w-4 text-green-600 mr-2" />
+                    <Check className="h-4 w-4 text-green-600 mr-2 dark:text-green-400" />
                     <div>
-                      <p className="text-sm font-medium text-green-900">Connected</p>
+                      <p className="text-sm font-medium text-green-900 dark:text-green-100">Connected</p>
                       {settings.telegram_username && (
-                        <p className="text-xs text-green-700">@{settings.telegram_username}</p>
+                        <p className="text-xs text-green-700 dark:text-green-300">@{settings.telegram_username}</p>
                       )}
                     </div>
                   </div>
