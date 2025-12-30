@@ -1,6 +1,6 @@
 'use client'
 
-import { createContext, useContext, useEffect, useState, ReactNode } from 'react'
+import { createContext, useContext, useEffect, useState, useRef, ReactNode } from 'react'
 import { useWallet } from '@solana/wallet-adapter-react'
 import bs58 from 'bs58'
 
@@ -16,28 +16,35 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType | undefined>(undefined)
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const { publicKey, signMessage, disconnect } = useWallet()
+  const { publicKey, signMessage, disconnect, connected } = useWallet()
   const [isAuthenticated, setIsAuthenticated] = useState(false)
   const [walletAddress, setWalletAddress] = useState<string | null>(null)
   const [isAdmin, setIsAdmin] = useState(false)
   const [isLoading, setIsLoading] = useState(true)
+  const wasConnectedRef = useRef(false)
 
   // Check authentication status on mount
   useEffect(() => {
     checkAuthStatus()
   }, [])
 
-  // Update wallet address when publicKey changes
+  // Check for wallet mismatch when publicKey changes
   useEffect(() => {
-    if (publicKey) {
-      // Check for wallet mismatch whenever wallet changes
+    if (publicKey && connected) {
+      // Wallet is connected - check for mismatch and track connection state
+      wasConnectedRef.current = true
       checkAuthStatus()
-    } else {
+    } else if (!connected && wasConnectedRef.current) {
+      // Wallet was connected and is now disconnected - clear auth state
+      // This handles explicit disconnection by the user
       setWalletAddress(null)
       setIsAuthenticated(false)
       setIsAdmin(false)
+      wasConnectedRef.current = false
     }
-  }, [publicKey])
+    // If publicKey is null and wasConnectedRef.current is false, we're still autoconnecting
+    // In this case, don't clear auth state - let JWT maintain the session
+  }, [publicKey, connected])
 
   const checkAuthStatus = async () => {
     try {
