@@ -8,7 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { formatRelativeTime, truncateString, getExplorerUrl, type SolanaExplorer } from "@/lib/utils";
+import { formatRelativeTime, truncateString, getExplorerUrl, type SolanaExplorer, severityBadgeColors } from "@/lib/utils";
 import {
   ArrowLeft,
   Edit,
@@ -19,8 +19,6 @@ import {
   Clock,
   Activity,
   AlertCircle,
-  CheckCircle,
-  XCircle,
   Eye,
   Download,
   X,
@@ -184,35 +182,6 @@ export function ProgramDetail({ programId }: ProgramDetailProps) {
     URL.revokeObjectURL(url);
   };
 
-  const getSeverityColor = (severity: string) => {
-    switch (severity) {
-      case "critical":
-        return "bg-red-100 text-red-800 border-red-200";
-      case "high":
-        return "bg-orange-100 text-orange-800 border-orange-200";
-      case "medium":
-        return "bg-yellow-100 text-yellow-800 border-yellow-200";
-      case "low":
-        return "bg-blue-100 text-blue-800 border-blue-200";
-      default:
-        return "bg-gray-100 text-gray-800 border-gray-200";
-    }
-  };
-
-  const getSeverityIcon = (severity: string) => {
-    switch (severity) {
-      case "critical":
-        return <XCircle className="h-4 w-4" />;
-      case "high":
-        return <AlertCircle className="h-4 w-4" />;
-      case "medium":
-        return <AlertCircle className="h-4 w-4" />;
-      case "low":
-        return <CheckCircle className="h-4 w-4" />;
-      default:
-        return <CheckCircle className="h-4 w-4" />;
-    }
-  };
 
   if (loading) {
     return (
@@ -470,9 +439,8 @@ export function ProgramDetail({ programId }: ProgramDetailProps) {
                 {changes.slice(0, 5).map((change) => (
                   <div key={change.id} className="space-y-2 rounded-lg border p-3">
                     <div className="flex items-center justify-between">
-                      <Badge variant="outline" className={getSeverityColor(change.severity)}>
-                        {getSeverityIcon(change.severity)}
-                        <span className="ml-1 capitalize">{change.severity}</span>
+                      <Badge className={severityBadgeColors[change.severity as keyof typeof severityBadgeColors] || severityBadgeColors.low}>
+                        {change.severity}
                       </Badge>
                       <span className="text-xs text-muted-foreground">
                         {formatRelativeTime(change.detected_at)}
