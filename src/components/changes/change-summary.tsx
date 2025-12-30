@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { AlertCircle, TrendingUp, Flag, Layers } from "lucide-react";
-import { getSeverityDotColor } from "@/lib/utils";
+import { severityDotColors } from "@/lib/utils";
 
 interface ChangeStatistics {
   total: number;
@@ -151,9 +151,9 @@ export function ChangeSummary() {
                 >
                   <div className="flex items-center space-x-3">
                     <div
-                      className={`h-3 w-3 rounded-full ${getSeverityDotColor(
-                        severity
-                      )}`}
+                      className={`h-3 w-3 rounded-full ${
+                        severityDotColors[severity as keyof typeof severityDotColors] || 'bg-gray-500'
+                      }`}
                     />
                     <span className="text-sm capitalize">{severity}</span>
                   </div>

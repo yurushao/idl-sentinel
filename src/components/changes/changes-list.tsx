@@ -5,7 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { formatRelativeTime, getSeverityDotColor, getSeverityBadgeColor, truncateString, debounce } from '@/lib/utils'
+import { formatRelativeTime, severityDotColors, severityBadgeColors, truncateString, debounce } from '@/lib/utils'
 import { Search, Filter, ChevronDown, ChevronUp } from 'lucide-react'
 import { ChangeDetails } from './change-details'
 
@@ -217,7 +217,9 @@ export function ChangesList() {
                 <CardContent className="p-4 sm:p-6">
                   <div className="flex items-start gap-3 sm:gap-4">
                     <div
-                      className={`h-4 w-4 rounded-full mt-1 flex-shrink-0 ${getSeverityDotColor(change.severity)}`}
+                      className={`h-4 w-4 rounded-full mt-1 flex-shrink-0 ${
+                        severityDotColors[change.severity] || 'bg-gray-500'
+                      }`}
                     />
 
                     <div className="flex-1 min-w-0">
@@ -230,7 +232,9 @@ export function ChangesList() {
                             {change.change_type}
                           </Badge>
                           <Badge
-                            className={`text-xs ${getSeverityBadgeColor(change.severity)}`}
+                            className={`text-xs ${
+                              severityBadgeColors[change.severity] || 'bg-gray-500 text-white'
+                            }`}
                           >
                             {change.severity}
                           </Badge>
