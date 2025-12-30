@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
-import { formatRelativeTime, getSeverityColor, truncateString } from '@/lib/utils'
+import { formatRelativeTime, getSeverityDotColor, getSeverityBadgeColor, truncateString } from '@/lib/utils'
 import { ExternalLink, Clock, AlertCircle } from 'lucide-react'
 
 interface IdlChange {
@@ -97,7 +97,7 @@ export function RecentChanges() {
             {changes.map((change) => (
               <div key={change.id} className="flex items-start gap-2 sm:gap-3 p-3 border rounded-lg hover:bg-muted/50 transition-colors">
                 <div
-                  className={`h-2 w-2 rounded-full mt-2 flex-shrink-0 ${getSeverityColor(change.severity)}`}
+                  className={`h-2 w-2 rounded-full mt-2 flex-shrink-0 ${getSeverityDotColor(change.severity)}`}
                 />
                 <div className="flex-1 min-w-0">
                   <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1 sm:gap-2 mb-2">
@@ -109,8 +109,7 @@ export function RecentChanges() {
                         {change.change_type}
                       </Badge>
                       <Badge
-                        variant={change.severity === 'critical' || change.severity === 'high' ? 'destructive' : 'secondary'}
-                        className="text-xs"
+                        className={`text-xs ${getSeverityBadgeColor(change.severity)}`}
                       >
                         {change.severity}
                       </Badge>
