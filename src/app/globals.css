@@ -75,6 +75,14 @@
   padding-right: 1rem !important;
   font-size: 0.875rem !important; /* text-sm */
   font-family: inherit !important; /* Use Geist font */
+  background-color: hsl(var(--primary)) !important;
+  color: hsl(var(--primary-foreground)) !important;
+  border-radius: calc(var(--radius) - 2px) !important;
+  transition: all 0.2s ease-in-out !important;
+}
+
+.wallet-button-small .wallet-adapter-button:not([disabled]):hover {
+  background-color: hsl(var(--primary) / 0.9) !important;
 }
 
 .wallet-button-small .wallet-adapter-button-trigger {
@@ -83,4 +91,27 @@
   padding-right: 1rem !important;
   font-size: 0.875rem !important;
   font-family: inherit !important; /* Use Geist font */
+  background-color: hsl(var(--primary)) !important;
+  color: hsl(var(--primary-foreground)) !important;
+}
+
+/* Wallet adapter modal customization */
+.wallet-adapter-modal-wrapper {
+  background-color: hsl(var(--background)) !important;
+  color: hsl(var(--foreground)) !important;
+}
+
+.wallet-adapter-modal-title {
+  color: hsl(var(--foreground)) !important;
+}
+
+.wallet-adapter-modal-list .wallet-adapter-button {
+  background-color: hsl(var(--card)) !important;
+  color: hsl(var(--card-foreground)) !important;
+  border: 1px solid hsl(var(--border)) !important;
+}
+
+.wallet-adapter-modal-list .wallet-adapter-button:not([disabled]):hover {
+  background-color: hsl(var(--accent)) !important;
+  color: hsl(var(--accent-foreground)) !important;
 }
