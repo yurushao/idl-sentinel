@@ -207,3 +207,21 @@ export function getSeverityEmoji(severity: string): string {
       return '📝'
   }
 }
+
+/**
+ * Gets severity badge color classes
+ */
+export function getSeverityBadgeColor(severity: string): string {
+  switch (severity) {
+    case 'critical':
+      return 'bg-red-500 text-white border-red-500 hover:bg-red-600 dark:bg-red-500 dark:text-white dark:border-red-500'
+    case 'high':
+      return 'bg-orange-500 text-white border-orange-500 hover:bg-orange-600 dark:bg-orange-500 dark:text-white dark:border-orange-500'
+    case 'medium':
+      return 'bg-yellow-500 text-white border-yellow-500 hover:bg-yellow-600 dark:bg-yellow-500 dark:text-white dark:border-yellow-500'
+    case 'low':
+      return 'bg-blue-500 text-white border-blue-500 hover:bg-blue-600 dark:bg-blue-500 dark:text-white dark:border-blue-500'
+    default:
+      return 'bg-gray-500 text-white border-gray-500 hover:bg-gray-600 dark:bg-gray-500 dark:text-white dark:border-gray-500'
+  }
+}

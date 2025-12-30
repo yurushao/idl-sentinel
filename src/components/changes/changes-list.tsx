@@ -5,7 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { formatRelativeTime, getSeverityColor, getSeverityEmoji, truncateString, debounce } from '@/lib/utils'
+import { formatRelativeTime, getSeverityColor, getSeverityEmoji, getSeverityBadgeColor, truncateString, debounce } from '@/lib/utils'
 import { Search, Filter, ChevronDown, ChevronUp } from 'lucide-react'
 import { ChangeDetails } from './change-details'
 
@@ -230,8 +230,7 @@ export function ChangesList() {
                             {change.change_type}
                           </Badge>
                           <Badge
-                            variant={change.severity === 'critical' || change.severity === 'high' ? 'destructive' : 'secondary'}
-                            className="text-xs"
+                            className={`text-xs ${getSeverityBadgeColor(change.severity)}`}
                           >
                             {getSeverityEmoji(change.severity)} {change.severity}
                           </Badge>
