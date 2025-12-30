@@ -74,11 +74,13 @@
   padding-left: 1rem !important;
   padding-right: 1rem !important;
   font-size: 0.875rem !important; /* text-sm */
+  font-weight: 500 !important; /* medium font weight */
   font-family: inherit !important; /* Use Geist font */
   background-color: hsl(var(--primary)) !important;
   color: hsl(var(--primary-foreground)) !important;
   border-radius: calc(var(--radius) - 2px) !important;
   transition: all 0.2s ease-in-out !important;
+  letter-spacing: normal !important;
 }
 
 .wallet-button-small .wallet-adapter-button:not([disabled]):hover {
@@ -90,28 +92,49 @@
   padding-left: 1rem !important;
   padding-right: 1rem !important;
   font-size: 0.875rem !important;
+  font-weight: 500 !important;
   font-family: inherit !important; /* Use Geist font */
   background-color: hsl(var(--primary)) !important;
   color: hsl(var(--primary-foreground)) !important;
+  letter-spacing: normal !important;
 }
 
 /* Wallet adapter modal customization */
 .wallet-adapter-modal-wrapper {
   background-color: hsl(var(--background)) !important;
   color: hsl(var(--foreground)) !important;
+  font-family: inherit !important;
 }
 
 .wallet-adapter-modal-title {
   color: hsl(var(--foreground)) !important;
+  font-family: inherit !important;
+  font-weight: 600 !important;
+  letter-spacing: normal !important;
 }
 
 .wallet-adapter-modal-list .wallet-adapter-button {
   background-color: hsl(var(--card)) !important;
   color: hsl(var(--card-foreground)) !important;
   border: 1px solid hsl(var(--border)) !important;
+  font-family: inherit !important;
+  font-weight: 500 !important;
+  letter-spacing: normal !important;
 }
 
 .wallet-adapter-modal-list .wallet-adapter-button:not([disabled]):hover {
   background-color: hsl(var(--accent)) !important;
   color: hsl(var(--accent-foreground)) !important;
+}
+
+/* Override all wallet adapter text elements to use app font */
+.wallet-adapter-button,
+.wallet-adapter-button-trigger,
+.wallet-adapter-modal,
+.wallet-adapter-modal-title,
+.wallet-adapter-modal-wrapper,
+.wallet-adapter-modal-list,
+.wallet-adapter-modal-list-more {
+  font-family: inherit !important;
+  letter-spacing: normal !important;
 }
