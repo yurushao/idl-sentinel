@@ -191,24 +191,6 @@ export function getSeverityColor(severity: string): string {
 }
 
 /**
- * Gets severity emoji for notifications
- */
-export function getSeverityEmoji(severity: string): string {
-  switch (severity) {
-    case 'critical':
-      return '🚨'
-    case 'high':
-      return '⚠️'
-    case 'medium':
-      return '📢'
-    case 'low':
-      return 'ℹ️'
-    default:
-      return '📝'
-  }
-}
-
-/**
  * Gets severity dot color for severity indicators
  */
 export function getSeverityDotColor(severity: string): string {

@@ -1,4 +1,3 @@
-import { getSeverityEmoji } from '../utils'
 import { supabaseAdmin } from '../supabase'
 import type { IdlChange } from '../supabase'
 
@@ -100,7 +99,6 @@ export function formatSlackMessage(
   for (const [severity, severityChanges] of Object.entries(changesBySeverity)) {
     if (severityChanges.length === 0) continue
 
-    const emoji = getSeverityEmoji(severity)
     const severityTitle = severity.charAt(0).toUpperCase() + severity.slice(1)
 
     const changesList = severityChanges.slice(0, 5).map(change =>
@@ -115,7 +113,7 @@ export function formatSlackMessage(
       type: 'section',
       text: {
         type: 'mrkdwn',
-        text: `${emoji} *${severityTitle} (${severityChanges.length})*\n${changesList}${moreText}`
+        text: `*${severityTitle} (${severityChanges.length})*\n${changesList}${moreText}`
       }
     })
   }
