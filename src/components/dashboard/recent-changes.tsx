@@ -94,7 +94,7 @@ export function RecentChanges() {
           </div>
         ) : (
           <div className="space-y-3">
-            {changes.map((change) => (
+            {changes.slice(0, 5).map((change) => (
               <div key={change.id} className="flex items-start gap-2 sm:gap-3 p-3 border rounded-lg hover:bg-muted/50 transition-colors">
                 <div
                   className={`h-2 w-2 rounded-full mt-2 flex-shrink-0 ${
@@ -128,6 +128,15 @@ export function RecentChanges() {
                 </div>
               </div>
             ))}
+            {changes.length > 5 && (
+              <div className="text-center pt-4">
+                <Link href="/changes" className="block sm:inline-block">
+                  <button className="w-full sm:w-auto px-4 py-2 border border-input bg-background rounded-md text-sm hover:bg-accent hover:text-accent-foreground transition-colors">
+                    View all {changes.length} changes
+                  </button>
+                </Link>
+              </div>
+            )}
           </div>
         )}
       </CardContent>
