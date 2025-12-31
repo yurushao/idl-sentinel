@@ -12,6 +12,7 @@ import {
 import { createChanges } from "../db/changes";
 import { detectChanges } from "./change-detector";
 import { supabaseAdmin } from "../supabase";
+import { cache, CacheKeys, CacheTTL } from "../cache";
 
 export interface MonitoringResult {
   runId: string;
@@ -156,44 +157,68 @@ export async function monitorPrograms(): Promise<MonitoringResult> {
     // Create Solana connection
     const connection = createSolanaConnection();
 
-    // Monitor each program
-    for (const program of programs) {
-      try {
-        console.log(
-          `Monitoring program: ${program.name} (${program.program_id})`
-        );
+    // Monitor programs in parallel with concurrency limit to avoid overwhelming RPC
+    // Process 10 programs concurrently for optimal performance
+    const CONCURRENCY_LIMIT = 10;
 
-        const programResult = await monitorProgram(runId, connection, program);
+    // Helper to process programs in batches
+    const processBatch = async (batch: typeof programs) => {
+      const batchResults = await Promise.allSettled(
+        batch.map(async (program) => {
+          console.log(
+            `Monitoring program: ${program.name} (${program.program_id})`
+          );
 
-        result.programsChecked++;
-        if (programResult.snapshotCreated) {
-          result.snapshotsCreated++;
+          const programResult = await monitorProgram(runId, connection, program);
+
+          await logMonitoringEvent(
+            runId,
+            program.id,
+            "info",
+            `Program monitored successfully. Snapshot created: ${programResult.snapshotCreated}, Changes: ${programResult.changesDetected}`
+          );
+
+          return { program, programResult };
+        })
+      );
+
+      // Process results and update counters
+      for (const promiseResult of batchResults) {
+        if (promiseResult.status === 'fulfilled') {
+          const { program, programResult } = promiseResult.value;
+          result.programsChecked++;
+          if (programResult.snapshotCreated) {
+            result.snapshotsCreated++;
+          }
+          result.changesDetected += programResult.changesDetected;
+        } else {
+          // Handle rejected promise
+          const errorMessage = promiseResult.reason instanceof Error
+            ? promiseResult.reason.message
+            : "Unknown error";
+
+          // Try to extract program info from error context
+          console.error(`Error monitoring program:`, promiseResult.reason);
+
+          result.errors.push({
+            programId: 'unknown',
+            error: errorMessage,
+          });
+
+          await logMonitoringEvent(
+            runId,
+            null,
+            "error",
+            `Failed to monitor program: ${errorMessage}`
+          );
         }
-        result.changesDetected += programResult.changesDetected;
-
-        await logMonitoringEvent(
-          runId,
-          program.id,
-          "info",
-          `Program monitored successfully. Snapshot created: ${programResult.snapshotCreated}, Changes: ${programResult.changesDetected}`
-        );
-      } catch (error) {
-        const errorMessage =
-          error instanceof Error ? error.message : "Unknown error";
-        console.error(`Error monitoring program ${program.name}:`, error);
-
-        result.errors.push({
-          programId: program.program_id,
-          error: errorMessage,
-        });
-
-        await logMonitoringEvent(
-          runId,
-          program.id,
-          "error",
-          `Failed to monitor program: ${errorMessage}`
-        );
       }
+    };
+
+    // Process programs in batches
+    for (let i = 0; i < programs.length; i += CONCURRENCY_LIMIT) {
+      const batch = programs.slice(i, i + CONCURRENCY_LIMIT);
+      await processBatch(batch);
     }
 
     // Log completion
@@ -320,6 +345,7 @@ async function logMonitoringEvent(
 
 /**
  * Gets dashboard statistics for the UI
+ * Cached for 60 seconds to reduce database load
  */
 export async function getDashboardStats(): Promise<{
   totalPrograms: number;
@@ -328,68 +354,74 @@ export async function getDashboardStats(): Promise<{
   recentChanges: number;
   lastMonitoringRun: string | null;
 }> {
-  try {
-    // Get total and active programs count
-    const { data: programs, error: programsError } = await supabaseAdmin
-      .from("monitored_programs")
-      .select("id, is_active");
+  return cache.getOrCompute(
+    CacheKeys.DASHBOARD_STATS,
+    async () => {
+      try {
+        // Get total and active programs count
+        const { data: programs, error: programsError } = await supabaseAdmin
+          .from("monitored_programs")
+          .select("id, is_active");
 
-    if (programsError) {
-      console.error("Error fetching programs:", programsError);
-      throw new Error(`Failed to fetch programs: ${programsError.message}`);
-    }
+        if (programsError) {
+          console.error("Error fetching programs:", programsError);
+          throw new Error(`Failed to fetch programs: ${programsError.message}`);
+        }
 
-    const totalPrograms = programs?.length ?? 0;
-    const activePrograms =
-      programs?.filter((p) => p.is_active).length ?? 0;
+        const totalPrograms = programs?.length ?? 0;
+        const activePrograms =
+          programs?.filter((p) => p.is_active).length ?? 0;
 
-    // Get total changes count
-    const { count: totalChanges, error: changesError } = await supabaseAdmin
-      .from("idl_changes")
-      .select("*", { count: "exact", head: true });
+        // Get total changes count
+        const { count: totalChanges, error: changesError } = await supabaseAdmin
+          .from("idl_changes")
+          .select("*", { count: "exact", head: true });
 
-    if (changesError) {
-      console.error("Error fetching total changes:", changesError);
-      throw new Error(`Failed to fetch changes: ${changesError.message}`);
-    }
+        if (changesError) {
+          console.error("Error fetching total changes:", changesError);
+          throw new Error(`Failed to fetch changes: ${changesError.message}`);
+        }
 
-    // Get recent changes (last 24 hours)
-    const twentyFourHoursAgo = new Date(
-      Date.now() - 24 * 60 * 60 * 1000
-    ).toISOString();
-    const { count: recentChanges, error: recentError } = await supabaseAdmin
-      .from("idl_changes")
-      .select("*", { count: "exact", head: true })
-      .gte("detected_at", twentyFourHoursAgo);
+        // Get recent changes (last 24 hours)
+        const twentyFourHoursAgo = new Date(
+          Date.now() - 24 * 60 * 60 * 1000
+        ).toISOString();
+        const { count: recentChanges, error: recentError } = await supabaseAdmin
+          .from("idl_changes")
+          .select("*", { count: "exact", head: true })
+          .gte("detected_at", twentyFourHoursAgo);
 
-    if (recentError) {
-      console.error("Error fetching recent changes:", recentError);
-      throw new Error(
-        `Failed to fetch recent changes: ${recentError.message}`
-      );
-    }
+        if (recentError) {
+          console.error("Error fetching recent changes:", recentError);
+          throw new Error(
+            `Failed to fetch recent changes: ${recentError.message}`
+          );
+        }
 
-    // Get last monitoring run time
-    const { data: lastLog, error: logError } = await supabaseAdmin
-      .from("monitoring_logs")
-      .select("created_at")
-      .order("created_at", { ascending: false })
-      .limit(1)
-      .single();
+        // Get last monitoring run time
+        const { data: lastLog, error: logError } = await supabaseAdmin
+          .from("monitoring_logs")
+          .select("created_at")
+          .order("created_at", { ascending: false })
+          .limit(1)
+          .single();
 
-    const lastMonitoringRun = lastLog?.created_at ?? null;
+        const lastMonitoringRun = lastLog?.created_at ?? null;
 
-    return {
-      totalPrograms,
-      activePrograms,
-      totalChanges: totalChanges ?? 0,
-      recentChanges: recentChanges ?? 0,
-      lastMonitoringRun,
-    };
-  } catch (error) {
-    console.error("Error getting dashboard stats:", error);
-    throw error;
-  }
+        return {
+          totalPrograms,
+          activePrograms,
+          totalChanges: totalChanges ?? 0,
+          recentChanges: recentChanges ?? 0,
+          lastMonitoringRun,
+        };
+      } catch (error) {
+        console.error("Error getting dashboard stats:", error);
+        throw error;
+      }
+    },
+    CacheTTL.DASHBOARD_STATS
+  );
 }
 
 /**

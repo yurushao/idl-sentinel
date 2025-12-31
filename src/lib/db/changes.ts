@@ -189,90 +189,56 @@ export async function getChangeStatistics(): Promise<{
   byType: Record<ChangeType, number>
   recent24h: number
 }> {
-  // Get total count
-  const { count: total, error: totalError } = await supabaseAdmin
-    .from('idl_changes')
-    .select('*', { count: 'exact', head: true })
+  // Use database function for efficient aggregation instead of fetching all rows
+  const { data, error } = await supabaseAdmin.rpc('get_change_statistics')
 
-  if (totalError) {
-    console.error('Error fetching total changes count:', totalError)
-    throw new Error(`Failed to fetch total changes count: ${totalError.message}`)
+  if (error) {
+    console.error('Error fetching change statistics:', error)
+    throw new Error(`Failed to fetch change statistics: ${error.message}`)
   }
 
-  // Get counts by severity
-  const { data: severityData, error: severityError } = await supabaseAdmin
-    .from('idl_changes')
-    .select('severity')
-
-  if (severityError) {
-    console.error('Error fetching severity data:', severityError)
-    throw new Error(`Failed to fetch severity data: ${severityError.message}`)
-  }
-
-  // Get counts by type
-  const { data: typeData, error: typeError } = await supabaseAdmin
-    .from('idl_changes')
-    .select('change_type')
-
-  if (typeError) {
-    console.error('Error fetching type data:', typeError)
-    throw new Error(`Failed to fetch type data: ${typeError.message}`)
-  }
-
-  // Get recent 24h count
-  const yesterday = new Date()
-  yesterday.setDate(yesterday.getDate() - 1)
-  
-  const { count: recent24h, error: recentError } = await supabaseAdmin
-    .from('idl_changes')
-    .select('*', { count: 'exact', head: true })
-    .gte('detected_at', yesterday.toISOString())
-
-  if (recentError) {
-    console.error('Error fetching recent changes count:', recentError)
-    throw new Error(`Failed to fetch recent changes count: ${recentError.message}`)
-  }
-
-  // Process severity counts
-  const bySeverity: Record<ChangeSeverity, number> = {
-    low: 0,
-    medium: 0,
-    high: 0,
-    critical: 0
-  }
-
-  severityData?.forEach(item => {
-    if (item.severity in bySeverity) {
-      bySeverity[item.severity as ChangeSeverity]++
+  if (!data || data.length === 0) {
+    return {
+      total: 0,
+      bySeverity: { low: 0, medium: 0, high: 0, critical: 0 },
+      byType: {
+        instruction_added: 0,
+        instruction_removed: 0,
+        instruction_modified: 0,
+        type_added: 0,
+        type_removed: 0,
+        type_modified: 0,
+        account_added: 0,
+        account_removed: 0,
+        account_modified: 0,
+        error_added: 0,
+        error_removed: 0,
+        error_modified: 0
+      },
+      recent24h: 0
     }
-  })
-
-  // Process type counts
-  const byType: Record<ChangeType, number> = {
-    instruction_added: 0,
-    instruction_removed: 0,
-    instruction_modified: 0,
-    type_added: 0,
-    type_removed: 0,
-    type_modified: 0,
-    account_added: 0,
-    account_removed: 0,
-    account_modified: 0,
-    error_added: 0,
-    error_removed: 0,
-    error_modified: 0
   }
 
-  typeData?.forEach(item => {
-    if (item.change_type in byType) {
-      byType[item.change_type as ChangeType]++
-    }
-  })
+  // Parse the aggregated results from database
+  const result = data[0]
 
   return {
-    total: total || 0,
-    bySeverity,
-    byType,
-    recent24h: recent24h || 0
+    total: result.total_count || 0,
+    bySeverity: result.severity_counts || { low: 0, medium: 0, high: 0, critical: 0 },
+    byType: result.type_counts || {
+      instruction_added: 0,
+      instruction_removed: 0,
+      instruction_modified: 0,
+      type_added: 0,
+      type_removed: 0,
+      type_modified: 0,
+      account_added: 0,
+      account_removed: 0,
+      account_modified: 0,
+      error_added: 0,
+      error_removed: 0,
+      error_modified: 0
+    },
+    recent24h: result.recent_24h_count || 0
   }
 }

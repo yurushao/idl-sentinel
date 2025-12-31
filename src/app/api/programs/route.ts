@@ -1,13 +1,53 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { getAllPrograms, createProgram } from '@/lib/db/programs'
+import { getAllPrograms, createProgram, getProgramCount } from '@/lib/db/programs'
 import { isValidProgramId } from '@/lib/utils'
 import { fetchInitialIdl } from '@/lib/monitoring/monitor'
 import { getAuthUser } from '@/lib/auth/middleware'
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
-    const programs = await getAllPrograms()
-    return NextResponse.json({ programs })
+    // Parse pagination parameters from query string
+    const searchParams = request.nextUrl.searchParams
+    const limit = searchParams.get('limit')
+    const offset = searchParams.get('offset')
+
+    // Validate and parse pagination params
+    const parsedLimit = limit ? parseInt(limit, 10) : undefined
+    const parsedOffset = offset ? parseInt(offset, 10) : 0
+
+    // Validate limits
+    if (parsedLimit !== undefined && (isNaN(parsedLimit) || parsedLimit < 1 || parsedLimit > 100)) {
+      return NextResponse.json(
+        { error: 'Invalid limit parameter. Must be between 1 and 100' },
+        { status: 400 }
+      )
+    }
+
+    if (isNaN(parsedOffset) || parsedOffset < 0) {
+      return NextResponse.json(
+        { error: 'Invalid offset parameter. Must be >= 0' },
+        { status: 400 }
+      )
+    }
+
+    // Fetch programs with pagination
+    const [programs, totalCount] = await Promise.all([
+      getAllPrograms({
+        limit: parsedLimit,
+        offset: parsedOffset
+      }),
+      getProgramCount()
+    ])
+
+    return NextResponse.json({
+      programs,
+      pagination: {
+        total: totalCount,
+        limit: parsedLimit || totalCount,
+        offset: parsedOffset,
+        hasMore: parsedLimit ? (parsedOffset + parsedLimit) < totalCount : false
+      }
+    })
   } catch (error) {
     console.error('Error fetching programs:', error)
     return NextResponse.json(

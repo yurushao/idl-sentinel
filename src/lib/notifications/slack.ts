@@ -163,6 +163,58 @@ export async function getUsersWatchingProgram(programId: string): Promise<SlackW
 }
 
 /**
+ * Batch load watchers for multiple programs
+ * Optimized to avoid N+1 queries
+ */
+async function getBatchWatchers(programIds: string[]): Promise<Map<string, SlackWebhookConfig[]>> {
+  if (programIds.length === 0) {
+    return new Map()
+  }
+
+  try {
+    const { data, error } = await supabaseAdmin
+      .from('user_watchlist')
+      .select(`
+        program_id,
+        user_id,
+        users!inner(
+          id,
+          wallet_address,
+          slack_webhook_url
+        )
+      `)
+      .in('program_id', programIds)
+      .not('users.slack_webhook_url', 'is', null)
+
+    if (error) {
+      console.error('Error batch fetching watchers:', error)
+      return new Map()
+    }
+
+    // Group watchers by program_id
+    const watchersByProgram = new Map<string, SlackWebhookConfig[]>()
+
+    if (data && data.length > 0) {
+      for (const entry of data as any[]) {
+        if (!watchersByProgram.has(entry.program_id)) {
+          watchersByProgram.set(entry.program_id, [])
+        }
+        watchersByProgram.get(entry.program_id)!.push({
+          userId: entry.users.id,
+          walletAddress: entry.users.wallet_address,
+          webhookUrl: entry.users.slack_webhook_url
+        })
+      }
+    }
+
+    return watchersByProgram
+  } catch (error) {
+    console.error('Error batch loading watchers:', error)
+    return new Map()
+  }
+}
+
+/**
  * Sends Slack notifications to users watching programs with changes
  */
 export async function sendWatchlistNotifications(): Promise<{
@@ -212,48 +264,57 @@ export async function sendWatchlistNotifications(): Promise<{
       changesByProgram.get(programDbId)!.push(change)
     }
 
-    // Send notifications for each program
-    for (const [programDbId, programChanges] of changesByProgram) {
+    // Batch load all watchers for all programs
+    const programDbIds = Array.from(changesByProgram.keys())
+    const watchersByProgram = await getBatchWatchers(programDbIds)
+
+    // Send notifications in parallel with concurrency control
+    const NOTIFICATION_CONCURRENCY = 5 // Send to 5 watchers concurrently
+
+    const processProgram = async (programDbId: string, programChanges: typeof changes) => {
       try {
         const programName = programChanges[0].monitored_programs.name
         const programId = programChanges[0].monitored_programs.program_id
 
-        // Get users watching this program
-        const watchers = await getUsersWatchingProgram(programDbId)
+        const watchers = watchersByProgram.get(programDbId) || []
 
         if (watchers.length === 0) {
           console.log(`No watchers with Slack webhooks for program ${programName}`)
           // Still mark as notified even if no watchers
-          const changeIds = programChanges.map(c => c.id)
+          const changeIds = programChanges.map((c: any) => c.id)
           await supabaseAdmin
             .from('idl_changes')
             .update({ slack_notified: true })
             .in('id', changeIds)
-          continue
+          return
         }
 
         const message = formatSlackMessage(programName, programId, programChanges)
 
-        // Send to each watcher's Slack webhook
+        // Send to watchers in parallel batches
         let successfulSends = 0
-        for (const watcher of watchers) {
-          const success = await sendSlackNotification(watcher.webhookUrl, message)
+        for (let i = 0; i < watchers.length; i += NOTIFICATION_CONCURRENCY) {
+          const batch = watchers.slice(i, i + NOTIFICATION_CONCURRENCY)
+          const results = await Promise.allSettled(
+            batch.map(watcher => sendSlackNotification(watcher.webhookUrl, message))
+          )
 
-          if (success) {
-            successfulSends++
-            console.log(`Sent Slack notification to user ${watcher.walletAddress.substring(0, 8)}... for ${programName}`)
-          } else {
-            result.failed++
-            result.errors.push(`Failed to send to user ${watcher.walletAddress.substring(0, 8)}... for ${programName}`)
+          for (let j = 0; j < results.length; j++) {
+            const watcher = batch[j]
+            const promiseResult = results[j]
+            if (promiseResult.status === 'fulfilled' && promiseResult.value) {
+              successfulSends++
+              console.log(`Sent Slack notification to user ${watcher.walletAddress.substring(0, 8)}... for ${programName}`)
+            } else {
+              result.failed++
+              result.errors.push(`Failed to send to user ${watcher.walletAddress.substring(0, 8)}... for ${programName}`)
+            }
           }
-
-          // Add small delay between sends to avoid rate limiting
-          await new Promise(resolve => setTimeout(resolve, 200))
         }
 
         if (successfulSends > 0) {
           // Mark changes as notified
-          const changeIds = programChanges.map(c => c.id)
+          const changeIds = programChanges.map((c: any) => c.id)
 
           const { error: updateError } = await supabaseAdmin
             .from('idl_changes')
@@ -272,15 +333,19 @@ export async function sendWatchlistNotifications(): Promise<{
           }
         }
 
-        // Add delay between programs
-        await new Promise(resolve => setTimeout(resolve, 500))
-
       } catch (error) {
         const errorMessage = error instanceof Error ? error.message : 'Unknown error'
         result.failed++
         result.errors.push(`Error processing Slack notifications for program ${programDbId}: ${errorMessage}`)
       }
     }
+
+    // Process all programs in parallel
+    await Promise.all(
+      Array.from(changesByProgram.entries()).map(([programDbId, programChanges]) =>
+        processProgram(programDbId, programChanges)
+      )
+    )
 
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : 'Unknown error'

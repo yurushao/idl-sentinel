@@ -145,39 +145,42 @@ export async function deleteProgram(id: string): Promise<void> {
 
 /**
  * Get all programs (including inactive ones)
+ * Optimized: Uses a single query with lateral join to avoid N+1 queries
  */
-export async function getAllPrograms(): Promise<MonitoredProgram[]> {
-  const { data, error } = await supabaseAdmin
-    .from('monitored_programs')
-    .select('*')
-    .order('created_at', { ascending: false })
+export async function getAllPrograms(options?: {
+  limit?: number
+  offset?: number
+}): Promise<MonitoredProgram[]> {
+  const limit = options?.limit
+  const offset = options?.offset || 0
+
+  // Use raw SQL with lateral join for optimal performance
+  // This fetches all programs and their latest monitoring log in a single query
+  const { data, error } = await supabaseAdmin.rpc('get_all_programs_with_last_check', {
+    p_limit: limit || null,
+    p_offset: offset
+  })
 
   if (error) {
     console.error('Error fetching all programs:', error)
     throw new Error(`Failed to fetch programs: ${error.message}`)
   }
 
-  if (!data || data.length === 0) {
-    return []
+  return data || []
+}
+
+/**
+ * Get total count of programs
+ */
+export async function getProgramCount(): Promise<number> {
+  const { count, error } = await supabaseAdmin
+    .from('monitored_programs')
+    .select('*', { count: 'exact', head: true })
+
+  if (error) {
+    console.error('Error counting programs:', error)
+    throw new Error(`Failed to count programs: ${error.message}`)
   }
 
-  // Fetch last_checked_at for all programs
-  const programsWithLastChecked = await Promise.all(
-    data.map(async (program) => {
-      const { data: latestLog } = await supabaseAdmin
-        .from('monitoring_logs')
-        .select('created_at')
-        .eq('program_id', program.id)
-        .order('created_at', { ascending: false })
-        .limit(1)
-        .single()
-
-      return {
-        ...program,
-        last_checked_at: latestLog?.created_at || null
-      }
-    })
-  )
-
-  return programsWithLastChecked
+  return count || 0
 }
