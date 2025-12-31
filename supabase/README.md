@@ -70,11 +70,39 @@ The database consists of the following tables:
 
 ## Schema Management
 
-The `schema.sql` file is the **single source of truth** for the database schema. It contains the complete, final state of all tables, indexes, policies, and triggers.
+The `schema.sql` file is the **single source of truth** for the database schema. It contains the complete, final state of all tables, indexes, policies, triggers, and functions.
 
-### For New Deployments
+### For New Deployments (Fresh Setup)
 
-Simply run `schema.sql` in your Supabase SQL Editor - this creates the entire database schema in one go.
+**If you're cloning the repo and setting up a new database:**
+
+Simply run `schema.sql` in your Supabase SQL Editor - this creates the entire database schema in one go, including all optimizations.
+
+**DO NOT** run the migration files - they are only for existing deployments.
+
+```sql
+-- In Supabase SQL Editor, copy and paste the entire contents of:
+-- supabase/schema.sql
+```
+
+### For Existing Deployments (Upgrading)
+
+**If you already have a running database and want to apply the latest optimizations:**
+
+Run the migration file `migration_production_optimizations.sql` which adds:
+- Performance indexes
+- Optimized database functions
+
+```sql
+-- In Supabase SQL Editor, copy and paste the entire contents of:
+-- supabase/migration_production_optimizations.sql
+```
+
+### Files in This Directory
+
+- **`schema.sql`** - Complete database schema (use for fresh setup)
+- **`migration_production_optimizations.sql`** - Migration for existing databases (adds indexes and functions)
+- **`README.md`** - This file
 
 ### For Schema Updates
 
