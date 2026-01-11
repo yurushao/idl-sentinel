@@ -84,7 +84,7 @@ export function ChangeDetails({ details }: ChangeDetailsProps) {
                   {splitView ? 'Unified view' : 'Split view'}
                 </button>
               </div>
-              <div className="border rounded-lg overflow-hidden">
+              <div className="border rounded-md overflow-hidden">
                 <ReactDiffViewer
                   oldValue={oldValueStr}
                   newValue={newValueStr}
@@ -150,7 +150,7 @@ export function ChangeDetails({ details }: ChangeDetailsProps) {
               <div className="text-xs font-medium text-muted-foreground">
                 {isAddition ? 'Added Value' : 'Removed Value'}
               </div>
-              <div className="border rounded-lg overflow-hidden">
+              <div className="border rounded-md overflow-hidden">
                 <div className={`p-3 ${isAddition ? 'bg-green-50 dark:bg-green-950/30' : 'bg-red-50 dark:bg-red-950/30'}`}>
                   <pre className={`text-xs overflow-x-auto whitespace-pre-wrap font-mono ${isAddition ? 'text-green-900 dark:text-green-100' : 'text-red-900 dark:text-red-100'}`}>
                     {isAddition ? newValueStr : oldValueStr}
@@ -168,7 +168,7 @@ export function ChangeDetails({ details }: ChangeDetailsProps) {
           <summary className="cursor-pointer text-xs font-medium text-muted-foreground hover:text-foreground transition-colors">
             View raw JSON
           </summary>
-          <div className="mt-2 p-3 bg-muted rounded-lg">
+          <div className="mt-2 p-3 bg-muted rounded-md">
             <pre className="text-xs overflow-x-auto">
               {JSON.stringify(details, null, 2)}
             </pre>

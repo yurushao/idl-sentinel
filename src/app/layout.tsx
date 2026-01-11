@@ -1,10 +1,14 @@
 import type { Metadata } from "next"
-import { Geist } from "next/font/google"
+import { JetBrains_Mono } from "next/font/google"
 import "./globals.css"
 import { Providers } from "@/components/providers"
 import { Analytics } from "@vercel/analytics/next"
 
-const geist = Geist({ subsets: ["latin"] })
+const jetbrainsMono = JetBrains_Mono({
+  subsets: ["latin"],
+  weight: ["400", "500", "600", "700"],
+  variable: "--font-jetbrains-mono"
+})
 
 export const metadata: Metadata = {
   title: "IDL Sentinel",
@@ -18,7 +22,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" suppressHydrationWarning>
-      <body className={geist.className}>
+      <body className={jetbrainsMono.className}>
         <Providers>{children}</Providers>
         <Analytics />
       </body>

@@ -64,10 +64,10 @@ export function RecentChanges() {
           <div className="space-y-3">
             {[...Array(LIMIT)].map((_, i) => (
               <div key={i} className="flex items-center space-x-3 rounded-lg border p-3">
-                <div className="h-2 w-2 animate-pulse rounded-full bg-muted" />
+                <div className="h-2 w-2 animate-pulse rounded-sm bg-muted" />
                 <div className="flex-1 space-y-2">
-                  <div className="h-4 animate-pulse rounded bg-muted" />
-                  <div className="h-3 w-2/3 animate-pulse rounded bg-muted/50" />
+                  <div className="h-4 animate-pulse rounded-sm bg-muted" />
+                  <div className="h-3 w-2/3 animate-pulse rounded-sm bg-muted/50" />
                 </div>
               </div>
             ))}
@@ -107,10 +107,10 @@ export function RecentChanges() {
               <Link
                 key={change.id}
                 href="/changes"
-                className="block flex cursor-pointer items-start gap-2 rounded-lg border p-3 transition-colors hover:bg-muted/50 sm:gap-3"
+                className="block flex cursor-pointer items-start gap-2 rounded-md border p-3 transition-colors hover:bg-muted/50 sm:gap-3"
               >
                 <div
-                  className={`mt-2 h-2 w-2 flex-shrink-0 rounded-full ${
+                  className={`mt-2 h-2 w-2 flex-shrink-0 rounded-sm ${
                     severityDotColors[change.severity] || "bg-gray-500"
                   }`}
                 />

@@ -57,8 +57,8 @@ export function MonitoredPrograms() {
             {[...Array(3)].map((_, i) => (
               <div key={i} className="flex items-center space-x-3 p-3 border rounded-lg">
                 <div className="flex-1 space-y-2">
-                  <div className="h-4 bg-muted rounded animate-pulse" />
-                  <div className="h-3 bg-muted/50 rounded w-2/3 animate-pulse" />
+                  <div className="h-4 bg-muted rounded-sm animate-pulse" />
+                  <div className="h-3 bg-muted/50 rounded-sm w-2/3 animate-pulse" />
                 </div>
               </div>
             ))}
@@ -117,7 +117,7 @@ export function MonitoredPrograms() {
         ) : (
           <div className="space-y-3">
             {programs.slice(0, 5).map((program) => (
-              <div key={program.id} className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 p-3 border rounded-lg hover:bg-muted/50 transition-colors">
+              <div key={program.id} className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 p-3 border rounded-md hover:bg-muted/50 transition-colors">
                 <div className="flex-1 min-w-0">
                   <div className="flex flex-wrap items-center gap-2 mb-2">
                     <Activity className={`h-4 w-4 ${program.is_active ? 'text-green-600' : 'text-muted-foreground'}`} />
@@ -134,7 +134,7 @@ export function MonitoredPrograms() {
                     </p>
                   )}
                   <div className="space-y-1">
-                    <p className="text-xs text-muted-foreground font-mono bg-muted px-2 py-1 rounded inline-block break-all">
+                    <p className="text-xs text-muted-foreground font-mono bg-muted px-2 py-1 rounded-sm inline-block break-all">
                       {truncateString(program.program_id, 30)}
                     </p>
                     <p className="text-xs text-muted-foreground">

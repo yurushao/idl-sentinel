@@ -59,11 +59,11 @@ export function ChangeSummary() {
         {[...Array(4)].map((_, i) => (
           <Card key={i}>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <div className="h-4 w-24 bg-muted rounded animate-pulse" />
+              <div className="h-4 w-24 bg-muted rounded-sm animate-pulse" />
             </CardHeader>
             <CardContent>
-              <div className="h-8 w-16 bg-muted rounded animate-pulse mb-2" />
-              <div className="h-3 w-32 bg-muted rounded animate-pulse" />
+              <div className="h-8 w-16 bg-muted rounded-sm animate-pulse mb-2" />
+              <div className="h-3 w-32 bg-muted rounded-sm animate-pulse" />
             </CardContent>
           </Card>
         ))}
@@ -151,7 +151,7 @@ export function ChangeSummary() {
                 >
                   <div className="flex items-center space-x-3">
                     <div
-                      className={`h-3 w-3 rounded-full ${
+                      className={`h-3 w-3 rounded-sm ${
                         severityDotColors[severity as keyof typeof severityDotColors] || 'bg-gray-500'
                       }`}
                     />

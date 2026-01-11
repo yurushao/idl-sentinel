@@ -378,7 +378,7 @@ export function ProgramDetail({ programId }: ProgramDetailProps) {
                 {snapshots.slice(0, 5).map((snapshot) => (
                   <div
                     key={snapshot.id}
-                    className="flex items-center justify-between rounded-lg border p-3"
+                    className="flex items-center justify-between rounded-md border p-3"
                   >
                     <div className="flex-1">
                       <code className="rounded bg-muted px-2 py-1 text-xs">
@@ -442,7 +442,7 @@ export function ProgramDetail({ programId }: ProgramDetailProps) {
             ) : (
               <div className="space-y-3">
                 {changes.slice(0, 5).map((change) => (
-                  <div key={change.id} className="space-y-2 rounded-lg border p-3">
+                  <div key={change.id} className="space-y-2 rounded-md border p-3">
                     <div className="flex items-center justify-between">
                       <Badge
                         className={
@@ -483,7 +483,7 @@ export function ProgramDetail({ programId }: ProgramDetailProps) {
           onClick={() => setViewingSnapshot(null)}
         >
           <div
-            className="flex max-h-[90vh] w-full max-w-4xl flex-col rounded-lg bg-background shadow-lg"
+            className="flex max-h-[90vh] w-full max-w-4xl flex-col rounded-md bg-background shadow-lg"
             onClick={(e) => e.stopPropagation()}
           >
             {/* Modal Header */}

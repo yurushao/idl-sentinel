@@ -115,19 +115,19 @@ export function ChangesList() {
       <div className="space-y-6">
         <div className="flex justify-between items-center">
           <div className="flex items-center space-x-4">
-            <div className="h-10 w-64 bg-muted rounded animate-pulse" />
-            <div className="h-10 w-32 bg-muted rounded animate-pulse" />
+            <div className="h-10 w-64 bg-muted rounded-sm animate-pulse" />
+            <div className="h-10 w-32 bg-muted rounded-sm animate-pulse" />
           </div>
         </div>
-        
+
         <div className="space-y-4">
           {[...Array(5)].map((_, i) => (
             <Card key={i}>
               <CardContent className="p-6">
                 <div className="space-y-3">
-                  <div className="h-6 bg-muted rounded animate-pulse" />
-                  <div className="h-4 bg-muted rounded w-2/3 animate-pulse" />
-                  <div className="h-4 bg-muted rounded w-1/2 animate-pulse" />
+                  <div className="h-6 bg-muted rounded-sm animate-pulse" />
+                  <div className="h-4 bg-muted rounded-sm w-2/3 animate-pulse" />
+                  <div className="h-4 bg-muted rounded-sm w-1/2 animate-pulse" />
                 </div>
               </CardContent>
             </Card>
@@ -217,7 +217,7 @@ export function ChangesList() {
                 <CardContent className="p-4 sm:p-6">
                   <div className="flex items-start gap-3 sm:gap-4">
                     <div
-                      className={`h-4 w-4 rounded-full mt-1 flex-shrink-0 ${
+                      className={`h-4 w-4 rounded-sm mt-1 flex-shrink-0 ${
                         severityDotColors[change.severity] || 'bg-gray-500'
                       }`}
                     />
@@ -267,7 +267,7 @@ export function ChangesList() {
                       </p>
 
                       {isExpanded && change.change_details && (
-                        <div className="mt-4 p-3 sm:p-4 bg-muted/50 rounded-lg overflow-auto">
+                        <div className="mt-4 p-3 sm:p-4 bg-muted/50 rounded-md overflow-auto">
                           <h4 className="font-medium mb-3 text-sm">Change Details</h4>
                           <ChangeDetails details={change.change_details} />
                         </div>

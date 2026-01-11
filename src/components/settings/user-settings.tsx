@@ -411,7 +411,7 @@ export function UserSettings() {
             <div>
               <label className="text-sm font-medium text-muted-foreground">Role</label>
               <div className="mt-1">
-                <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-purple-100 text-purple-800">
+                <span className="inline-flex items-center px-2.5 py-0.5 rounded-sm text-xs font-medium bg-purple-100 text-purple-800">
                   Administrator
                 </span>
               </div>
