@@ -1,88 +1,57 @@
 'use client'
 
-import { useEffect, useState } from 'react'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { useState, useMemo, useEffect } from 'react'
+import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { formatRelativeTime, severityDotColors, severityBadgeColors, truncateString, debounce } from '@/lib/utils'
+import { formatRelativeTime, severityDotColors, severityBadgeColors, truncateString } from '@/lib/utils'
 import { Search, Filter, ChevronDown, ChevronUp } from 'lucide-react'
 import { ChangeDetails } from './change-details'
-
-interface IdlChange {
-  id: string
-  program_id: string
-  change_type: string
-  severity: 'low' | 'medium' | 'high' | 'critical'
-  change_summary: string
-  change_details?: any
-  detected_at: string
-  monitored_programs?: {
-    name: string
-    program_id: string
-  }
-}
+import { useChanges } from '@/hooks/use-changes'
 
 export function ChangesList() {
-  const [changes, setChanges] = useState<IdlChange[]>([])
-  const [filteredChanges, setFilteredChanges] = useState<IdlChange[]>([])
-  const [loading, setLoading] = useState(true)
+  const { data, isLoading } = useChanges(100)
+  const changes = data?.changes || []
+
   const [searchTerm, setSearchTerm] = useState('')
+  const [debouncedSearchTerm, setDebouncedSearchTerm] = useState('')
   const [severityFilter, setSeverityFilter] = useState<string>('all')
   const [programFilter, setProgramFilter] = useState<string>('all')
   const [expandedChanges, setExpandedChanges] = useState<Set<string>>(new Set())
 
   useEffect(() => {
-    fetchChanges()
-  }, [])
-
-  useEffect(() => {
-    const debouncedFilter = debounce(() => {
-      let filtered = changes
-
-      // Filter by search term
-      if (searchTerm.trim()) {
-        filtered = filtered.filter(change =>
-          change.change_summary.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          change.change_type.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          change.program_id.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          (change.monitored_programs?.name &&
-           change.monitored_programs.name.toLowerCase().includes(searchTerm.toLowerCase()))
-        )
-      }
-
-      // Filter by severity
-      if (severityFilter !== 'all') {
-        filtered = filtered.filter(change => change.severity === severityFilter)
-      }
-
-      // Filter by program
-      if (programFilter !== 'all') {
-        filtered = filtered.filter(change =>
-          change.monitored_programs?.name === programFilter
-        )
-      }
-
-      setFilteredChanges(filtered)
+    const handler = setTimeout(() => {
+      setDebouncedSearchTerm(searchTerm)
     }, 300)
+    return () => clearTimeout(handler)
+  }, [searchTerm])
 
-    debouncedFilter()
-  }, [searchTerm, severityFilter, programFilter, changes])
+  const filteredChanges = useMemo(() => {
+    let filtered = changes
 
-  const fetchChanges = async () => {
-    try {
-      const response = await fetch('/api/changes?limit=100')
-      if (response.ok) {
-        const data = await response.json()
-        setChanges(data.changes || [])
-        setFilteredChanges(data.changes || [])
-      }
-    } catch (error) {
-      console.error('Error fetching changes:', error)
-    } finally {
-      setLoading(false)
+    if (debouncedSearchTerm.trim()) {
+      filtered = filtered.filter(change =>
+        change.change_summary.toLowerCase().includes(debouncedSearchTerm.toLowerCase()) ||
+        change.change_type.toLowerCase().includes(debouncedSearchTerm.toLowerCase()) ||
+        change.program_id.toLowerCase().includes(debouncedSearchTerm.toLowerCase()) ||
+        (change.monitored_programs?.name &&
+         change.monitored_programs.name.toLowerCase().includes(debouncedSearchTerm.toLowerCase()))
+      )
     }
-  }
+
+    if (severityFilter !== 'all') {
+      filtered = filtered.filter(change => change.severity === severityFilter)
+    }
+
+    if (programFilter !== 'all') {
+      filtered = filtered.filter(change =>
+        change.monitored_programs?.name === programFilter
+      )
+    }
+
+    return filtered
+  }, [debouncedSearchTerm, severityFilter, programFilter, changes])
 
   const toggleExpanded = (changeId: string) => {
     const newExpanded = new Set(expandedChanges)
@@ -110,7 +79,7 @@ export function ChangesList() {
       .sort((a, b) => a.label.localeCompare(b.label))
   ]
 
-  if (loading) {
+  if (isLoading) {
     return (
       <div className="space-y-6">
         <div className="flex justify-between items-center">

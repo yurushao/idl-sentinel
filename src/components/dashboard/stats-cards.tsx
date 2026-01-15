@@ -1,40 +1,14 @@
 "use client";
 
-import { useEffect, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Blocks, AlertTriangle, CheckCircle, Clock, TrendingUp } from "lucide-react";
-
-interface MonitoringStats {
-  totalPrograms: number;
-  activePrograms: number;
-  totalChanges: number;
-  recentChanges: number;
-  lastMonitoringRun?: string;
-}
+import { Blocks, AlertTriangle, Clock, TrendingUp } from "lucide-react";
+import { useMonitoringStats } from "@/hooks/use-monitoring-stats";
 
 export function StatsCards() {
-  const [stats, setStats] = useState<MonitoringStats | null>(null);
-  const [loading, setLoading] = useState(true);
+  const { data, isLoading, isError } = useMonitoringStats();
+  const stats = data?.stats;
 
-  useEffect(() => {
-    fetchStats();
-  }, []);
-
-  const fetchStats = async () => {
-    try {
-      const response = await fetch("/api/monitoring/stats");
-      if (response.ok) {
-        const data = await response.json();
-        setStats(data.stats);
-      }
-    } catch (error) {
-      console.error("Error fetching stats:", error);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  if (loading) {
+  if (isLoading) {
     return (
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         {[...Array(4)].map((_, i) => (
@@ -55,7 +29,7 @@ export function StatsCards() {
     );
   }
 
-  if (!stats) {
+  if (isError || !stats) {
     return (
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         <Card>

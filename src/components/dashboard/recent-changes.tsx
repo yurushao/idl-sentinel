@@ -1,6 +1,5 @@
 "use client";
 
-import { useEffect, useState } from "react";
 import Link from "next/link";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -11,45 +10,15 @@ import {
   truncateString,
 } from "@/lib/utils";
 import { ExternalLink, Clock, AlertCircle } from "lucide-react";
-
-interface IdlChange {
-  id: string;
-  program_id: string;
-  change_type: string;
-  severity: "low" | "medium" | "high" | "critical";
-  change_summary: string;
-  detected_at: string;
-  monitored_programs?: {
-    name: string;
-    program_id: string;
-  };
-}
+import { useRecentChanges } from "@/hooks/use-changes";
 
 const LIMIT = 8;
 
 export function RecentChanges() {
-  const [changes, setChanges] = useState<IdlChange[]>([]);
-  const [loading, setLoading] = useState(true);
+  const { data, isLoading } = useRecentChanges(LIMIT);
+  const changes = data?.changes || [];
 
-  useEffect(() => {
-    fetchRecentChanges();
-  }, []);
-
-  const fetchRecentChanges = async () => {
-    try {
-      const response = await fetch("/api/changes?limit=" + LIMIT);
-      if (response.ok) {
-        const data = await response.json();
-        setChanges(data.changes || []);
-      }
-    } catch (error) {
-      console.error("Error fetching recent changes:", error);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  if (loading) {
+  if (isLoading) {
     return (
       <Card>
         <CardHeader>

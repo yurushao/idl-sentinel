@@ -1,36 +1,25 @@
 'use client'
 
-import { useEffect, useState, useMemo } from 'react'
+import { useState, useMemo, useEffect } from 'react'
 import Link from 'next/link'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { formatRelativeTime, truncateString } from '@/lib/utils'
+import { formatRelativeTime } from '@/lib/utils'
 import { Plus, Search, Eye, Edit, Trash2 } from 'lucide-react'
 import { useAuth } from '@/lib/auth/auth-context'
 import { AddToWatchlistButton } from '@/components/watchlist/add-to-watchlist-button'
-
-interface MonitoredProgram {
-  id: string
-  program_id: string
-  name: string
-  description?: string
-  is_active: boolean
-  created_at: string
-  updated_at: string
-}
+import { usePrograms, useDeleteProgram } from '@/hooks/use-programs'
 
 export function ProgramsList() {
   const { isAdmin } = useAuth()
-  const [programs, setPrograms] = useState<MonitoredProgram[]>([])
-  const [loading, setLoading] = useState(true)
+  const { data, isLoading } = usePrograms()
+  const deleteMutation = useDeleteProgram()
+  const programs = data?.programs || []
+
   const [searchTerm, setSearchTerm] = useState('')
   const [debouncedSearchTerm, setDebouncedSearchTerm] = useState('')
-
-  useEffect(() => {
-    fetchPrograms()
-  }, [])
 
   useEffect(() => {
     const handler = setTimeout(() => {
@@ -51,42 +40,19 @@ export function ProgramsList() {
     )
   }, [debouncedSearchTerm, programs])
 
-  const fetchPrograms = async () => {
-    try {
-      const response = await fetch('/api/programs')
-      if (response.ok) {
-        const data = await response.json()
-        setPrograms(data.programs || [])
-      }
-    } catch (error) {
-      console.error('Error fetching programs:', error)
-    } finally {
-      setLoading(false)
-    }
-  }
-
   const handleDelete = async (programId: string) => {
     if (!confirm('Are you sure you want to delete this program? This action cannot be undone.')) {
       return
     }
 
     try {
-      const response = await fetch(`/api/programs/${programId}`, {
-        method: 'DELETE',
-      })
-
-      if (response.ok) {
-        setPrograms(programs.filter(p => p.id !== programId))
-      } else {
-        alert('Failed to delete program')
-      }
+      await deleteMutation.mutateAsync(programId)
     } catch (error) {
-      console.error('Error deleting program:', error)
-      alert('Failed to delete program')
+      alert(error instanceof Error ? error.message : 'Failed to delete program')
     }
   }
 
-  if (loading) {
+  if (isLoading) {
     return (
       <div className="space-y-6">
         <div className="flex justify-between items-center">

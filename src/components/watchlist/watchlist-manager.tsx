@@ -1,82 +1,26 @@
 'use client'
 
-import { useState, useEffect } from 'react'
 import { useAuth } from '@/lib/auth/auth-context'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
 import { Star, StarOff, Loader2, ExternalLink } from 'lucide-react'
 import Link from 'next/link'
 import { formatRelativeTime } from '@/lib/utils'
-
-interface WatchlistProgram {
-  id: string
-  program_id: string
-  created_at: string
-  monitored_programs: {
-    id: string
-    program_id: string
-    name: string
-    description: string | null
-    is_active: boolean
-  }
-}
+import { useWatchlist, useRemoveFromWatchlist } from '@/hooks/use-watchlist'
 
 export function WatchlistManager() {
   const { isAuthenticated, isLoading: authLoading } = useAuth()
-  const [watchlist, setWatchlist] = useState<WatchlistProgram[]>([])
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
-
-  useEffect(() => {
-    if (!authLoading && isAuthenticated) {
-      fetchWatchlist()
-    } else if (!authLoading && !isAuthenticated) {
-      setLoading(false)
-    }
-  }, [isAuthenticated, authLoading])
-
-  const fetchWatchlist = async () => {
-    try {
-      setLoading(true)
-      setError(null)
-      const response = await fetch('/api/watchlist')
-
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({ error: 'Failed to fetch watchlist' }))
-
-        // Check if it's a database migration error
-        if (errorData.error && errorData.error.includes('user_watchlist')) {
-          throw new Error('Database tables not found. Please apply migrations in Supabase.')
-        }
-
-        throw new Error(errorData.error || 'Failed to fetch watchlist')
-      }
-
-      const data = await response.json()
-      setWatchlist(data.watchlist || [])
-    } catch (err) {
-      console.error('Error fetching watchlist:', err)
-      setError(err instanceof Error ? err.message : 'Failed to fetch watchlist')
-    } finally {
-      setLoading(false)
-    }
-  }
+  const { data, isLoading, isError, error, refetch } = useWatchlist({
+    enabled: isAuthenticated,
+  })
+  const removeMutation = useRemoveFromWatchlist()
+  const watchlist = data?.watchlist || []
 
   const removeFromWatchlist = async (programId: string) => {
     try {
-      const response = await fetch(`/api/watchlist?programId=${programId}`, {
-        method: 'DELETE',
-      })
-
-      if (!response.ok) {
-        throw new Error('Failed to remove from watchlist')
-      }
-
-      // Update local state
-      setWatchlist(prev => prev.filter(item => item.program_id !== programId))
+      await removeMutation.mutateAsync(programId)
     } catch (err) {
       console.error('Error removing from watchlist:', err)
-      setError(err instanceof Error ? err.message : 'Failed to remove from watchlist')
     }
   }
 
@@ -94,7 +38,7 @@ export function WatchlistManager() {
     )
   }
 
-  if (loading || authLoading) {
+  if (isLoading || authLoading) {
     return (
       <Card className="p-6">
         <div className="flex items-center justify-center">
@@ -105,12 +49,12 @@ export function WatchlistManager() {
     )
   }
 
-  if (error) {
+  if (isError) {
     return (
       <Card className="p-6">
         <div className="text-center text-destructive">
-          <p>Error: {error}</p>
-          <Button onClick={fetchWatchlist} className="mt-4">
+          <p>Error: {error instanceof Error ? error.message : 'Failed to fetch watchlist'}</p>
+          <Button onClick={() => refetch()} className="mt-4">
             Retry
           </Button>
         </div>

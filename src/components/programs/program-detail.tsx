@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -10,7 +10,6 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import {
   formatRelativeTime,
-  truncateString,
   getExplorerUrl,
   type SolanaExplorer,
   severityBadgeColors,
@@ -32,20 +31,11 @@ import {
 import { Light as SyntaxHighlighter } from "react-syntax-highlighter";
 import json from "react-syntax-highlighter/dist/esm/languages/hljs/json";
 import { github } from "react-syntax-highlighter/dist/esm/styles/hljs";
+import { useProgram, useProgramSnapshots, useProgramChanges, useDeleteProgram } from "@/hooks/use-programs";
+import { useUserSettings } from "@/hooks/use-user-settings";
 
 // Register JSON language
 SyntaxHighlighter.registerLanguage("json", json);
-
-interface MonitoredProgram {
-  id: string;
-  program_id: string;
-  name: string;
-  description?: string;
-  is_active: boolean;
-  created_at: string;
-  updated_at: string;
-  last_checked_at?: string | null;
-}
 
 interface Snapshot {
   id: string;
@@ -55,93 +45,30 @@ interface Snapshot {
   fetched_at: string;
 }
 
-interface Change {
-  id: string;
-  program_id: string;
-  snapshot_id: string;
-  change_type: string;
-  severity: "low" | "medium" | "high" | "critical";
-  change_summary: string;
-  change_details: any;
-  detected_at: string;
-}
-
 interface ProgramDetailProps {
   programId: string;
 }
 
 export function ProgramDetail({ programId }: ProgramDetailProps) {
   const router = useRouter();
-  const [program, setProgram] = useState<MonitoredProgram | null>(null);
-  const [snapshots, setSnapshots] = useState<Snapshot[]>([]);
-  const [changes, setChanges] = useState<Change[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [refreshing, setRefreshing] = useState(false);
   const [viewingSnapshot, setViewingSnapshot] = useState<Snapshot | null>(null);
-  const [preferredExplorer, setPreferredExplorer] = useState<SolanaExplorer>("explorer.solana.com");
 
-  useEffect(() => {
-    fetchProgramData();
-    fetchUserPreferences();
-  }, [programId]);
+  const { data: programData, isLoading: programLoading, isError: programError, error: programErrorObj, refetch: refetchProgram } = useProgram(programId);
+  const { data: snapshotsData, refetch: refetchSnapshots } = useProgramSnapshots(programId);
+  const { data: changesData, refetch: refetchChanges } = useProgramChanges(programId);
+  const { data: settingsData } = useUserSettings({ enabled: true });
+  const deleteMutation = useDeleteProgram();
 
-  const fetchUserPreferences = async () => {
-    try {
-      const response = await fetch("/api/user/settings");
-      if (response.ok) {
-        const data = await response.json();
-        if (data.user?.preferred_explorer) {
-          setPreferredExplorer(data.user.preferred_explorer);
-        }
-      }
-    } catch (err) {
-      // Silently fail and use default explorer
-      console.error("Error fetching user preferences:", err);
-    }
-  };
+  const program = programData?.program;
+  const snapshots = snapshotsData?.snapshots || [];
+  const changes = changesData?.changes || [];
+  const preferredExplorer: SolanaExplorer = settingsData?.user?.preferred_explorer || "explorer.solana.com";
 
-  const fetchProgramData = async () => {
-    try {
-      setLoading(true);
-      setError(null);
-
-      // Fetch program details
-      const programResponse = await fetch(`/api/programs/${programId}`);
-      if (!programResponse.ok) {
-        if (programResponse.status === 404) {
-          setError("Program not found");
-          return;
-        }
-        throw new Error("Failed to fetch program");
-      }
-      const programData = await programResponse.json();
-      setProgram(programData.program);
-
-      // Fetch snapshots
-      const snapshotsResponse = await fetch(`/api/programs/${programId}/snapshots?limit=10`);
-      if (snapshotsResponse.ok) {
-        const snapshotsData = await snapshotsResponse.json();
-        setSnapshots(snapshotsData.snapshots || []);
-      }
-
-      // Fetch changes
-      const changesResponse = await fetch(`/api/programs/${programId}/changes?limit=10`);
-      if (changesResponse.ok) {
-        const changesData = await changesResponse.json();
-        setChanges(changesData.changes || []);
-      }
-    } catch (err) {
-      console.error("Error fetching program data:", err);
-      setError("Failed to load program data");
-    } finally {
-      setLoading(false);
-    }
-  };
+  const [refreshing, setRefreshing] = useState(false);
 
   const handleRefresh = async () => {
     setRefreshing(true);
-    await fetchProgramData();
+    await Promise.all([refetchProgram(), refetchSnapshots(), refetchChanges()]);
     setRefreshing(false);
   };
 
@@ -151,18 +78,10 @@ export function ProgramDetail({ programId }: ProgramDetailProps) {
     }
 
     try {
-      const response = await fetch(`/api/programs/${programId}`, {
-        method: "DELETE",
-      });
-
-      if (response.ok) {
-        router.push("/programs");
-      } else {
-        alert("Failed to delete program");
-      }
+      await deleteMutation.mutateAsync(programId);
+      router.push("/programs");
     } catch (error) {
-      console.error("Error deleting program:", error);
-      alert("Failed to delete program");
+      alert(error instanceof Error ? error.message : "Failed to delete program");
     }
   };
 
@@ -188,7 +107,7 @@ export function ProgramDetail({ programId }: ProgramDetailProps) {
     URL.revokeObjectURL(url);
   };
 
-  if (loading) {
+  if (programLoading) {
     return (
       <div className="space-y-8">
         <div className="flex items-center gap-4">
@@ -226,7 +145,7 @@ export function ProgramDetail({ programId }: ProgramDetailProps) {
     );
   }
 
-  if (error) {
+  if (programError) {
     return (
       <div className="space-y-8">
         <div className="flex items-center gap-4">
@@ -240,7 +159,7 @@ export function ProgramDetail({ programId }: ProgramDetailProps) {
 
         <Alert>
           <AlertCircle className="h-4 w-4" />
-          <AlertDescription>{error}</AlertDescription>
+          <AlertDescription>{programErrorObj instanceof Error ? programErrorObj.message : "Failed to load program"}</AlertDescription>
         </Alert>
       </div>
     );

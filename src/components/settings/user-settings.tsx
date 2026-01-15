@@ -1,327 +1,143 @@
 'use client'
 
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { useAuth } from '@/lib/auth/auth-context'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Loader2, Save, TestTube, Check, X, ExternalLink } from 'lucide-react'
-
-interface UserSettings {
-  wallet_address: string
-  slack_webhook_url: string | null
-  telegram_chat_id: string | null
-  telegram_username: string | null
-  preferred_explorer: 'explorer.solana.com' | 'solscan.io'
-  is_admin: boolean
-  created_at: string
-  last_login_at: string
-}
+import {
+  useUserSettings,
+  useUpdateSettings,
+  useTestSlackWebhook,
+  useTestTelegram,
+  useTelegramConnect,
+  useTelegramConnectionPoll,
+} from '@/hooks/use-user-settings'
 
 export function UserSettings() {
   const { isAuthenticated, isLoading: authLoading, walletAddress } = useAuth()
-  const [settings, setSettings] = useState<UserSettings | null>(null)
+
+  const { data: settingsData, isLoading, isError, error: queryError, refetch } = useUserSettings({
+    enabled: isAuthenticated,
+  })
+  const updateSettingsMutation = useUpdateSettings()
+  const testSlackMutation = useTestSlackWebhook()
+  const testTelegramMutation = useTestTelegram()
+  const telegramConnectMutation = useTelegramConnect()
+
+  const settings = settingsData?.user || null
+
   const [slackWebhook, setSlackWebhook] = useState('')
   const [preferredExplorer, setPreferredExplorer] = useState<'explorer.solana.com' | 'solscan.io'>('explorer.solana.com')
-  const [loading, setLoading] = useState(true)
-  const [saving, setSaving] = useState(false)
-  const [testingSlack, setTestingSlack] = useState(false)
-  const [testingTelegram, setTestingTelegram] = useState(false)
-  const [connectingTelegram, setConnectingTelegram] = useState(false)
-  const [disconnectingTelegram, setDisconnectingTelegram] = useState(false)
   const [telegramConnectionUrl, setTelegramConnectionUrl] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [saveSuccess, setSaveSuccess] = useState(false)
   const [slackTestSuccess, setSlackTestSuccess] = useState<boolean | null>(null)
   const [telegramTestSuccess, setTelegramTestSuccess] = useState<boolean | null>(null)
-  const [savingExplorer, setSavingExplorer] = useState(false)
   const [explorerSaveSuccess, setExplorerSaveSuccess] = useState(false)
 
-  // Ref to store polling interval for cleanup
-  const pollIntervalRef = useRef<NodeJS.Timeout | null>(null)
-  const pollTimeoutRef = useRef<NodeJS.Timeout | null>(null)
-
+  // Sync local state when settings load
   useEffect(() => {
-    if (!authLoading && isAuthenticated) {
-      fetchSettings()
-    } else if (!authLoading && !isAuthenticated) {
-      setLoading(false)
+    if (settings) {
+      setSlackWebhook(settings.slack_webhook_url || '')
+      setPreferredExplorer(settings.preferred_explorer || 'explorer.solana.com')
     }
-  }, [isAuthenticated, authLoading])
+  }, [settings])
 
-  // Cleanup polling on unmount
-  useEffect(() => {
-    return () => {
-      if (pollIntervalRef.current) {
-        clearInterval(pollIntervalRef.current)
-      }
-      if (pollTimeoutRef.current) {
-        clearTimeout(pollTimeoutRef.current)
-      }
-    }
+  const handleTelegramConnected = useCallback(() => {
+    setTelegramConnectionUrl(null)
   }, [])
 
-  const fetchSettings = async () => {
-    try {
-      setLoading(true)
-      setError(null)
-      const response = await fetch('/api/user/settings')
-
-      if (!response.ok) {
-        throw new Error('Failed to fetch settings')
-      }
-
-      const data = await response.json()
-      setSettings(data.user)
-      setSlackWebhook(data.user.slack_webhook_url || '')
-      setPreferredExplorer(data.user.preferred_explorer || 'explorer.solana.com')
-    } catch (err) {
-      console.error('Error fetching settings:', err)
-      setError(err instanceof Error ? err.message : 'Failed to fetch settings')
-    } finally {
-      setLoading(false)
-    }
-  }
+  useTelegramConnectionPoll(!!telegramConnectionUrl, handleTelegramConnected)
 
   const saveExplorerPreference = async (explorer: 'explorer.solana.com' | 'solscan.io') => {
     try {
-      setSavingExplorer(true)
       setError(null)
       setExplorerSaveSuccess(false)
-
-      const response = await fetch('/api/user/settings', {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          preferred_explorer: explorer,
-        }),
-      })
-
-      if (!response.ok) {
-        const errorData = await response.json()
-        throw new Error(errorData.error || 'Failed to save explorer preference')
-      }
-
-      const data = await response.json()
-      setSettings(data.user)
       setPreferredExplorer(explorer)
-      setExplorerSaveSuccess(true)
 
-      // Clear success message after 2 seconds
+      await updateSettingsMutation.mutateAsync({ preferred_explorer: explorer })
+      setExplorerSaveSuccess(true)
       setTimeout(() => setExplorerSaveSuccess(false), 2000)
     } catch (err) {
-      console.error('Error saving explorer preference:', err)
       setError(err instanceof Error ? err.message : 'Failed to save explorer preference')
-      // Revert to previous value on error
       setPreferredExplorer(settings?.preferred_explorer || 'explorer.solana.com')
-    } finally {
-      setSavingExplorer(false)
     }
   }
 
   const saveSettings = async () => {
     try {
-      setSaving(true)
       setError(null)
       setSaveSuccess(false)
 
-      const response = await fetch('/api/user/settings', {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          slack_webhook_url: slackWebhook || null,
-        }),
-      })
-
-      if (!response.ok) {
-        const errorData = await response.json()
-        throw new Error(errorData.error || 'Failed to save settings')
-      }
-
-      const data = await response.json()
-      setSettings(data.user)
+      await updateSettingsMutation.mutateAsync({ slack_webhook_url: slackWebhook || null })
       setSaveSuccess(true)
-
-      // Clear success message after 3 seconds
       setTimeout(() => setSaveSuccess(false), 3000)
     } catch (err) {
-      console.error('Error saving settings:', err)
       setError(err instanceof Error ? err.message : 'Failed to save settings')
-    } finally {
-      setSaving(false)
     }
   }
 
   const testSlackWebhook = async () => {
     try {
-      setTestingSlack(true)
       setError(null)
       setSlackTestSuccess(null)
 
-      const response = await fetch('/api/user/settings', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          test_type: 'slack',
-          slack_webhook_url: slackWebhook,
-        }),
-      })
-
-      if (!response.ok) {
-        const errorData = await response.json()
-        throw new Error(errorData.error || 'Failed to send test notification')
-      }
-
+      await testSlackMutation.mutateAsync(slackWebhook)
       setSlackTestSuccess(true)
       setTimeout(() => setSlackTestSuccess(null), 5000)
     } catch (err) {
-      console.error('Error testing Slack webhook:', err)
       setSlackTestSuccess(false)
       setError(err instanceof Error ? err.message : 'Failed to send test notification')
-    } finally {
-      setTestingSlack(false)
     }
   }
 
   const connectTelegram = async () => {
     try {
-      setConnectingTelegram(true)
       setError(null)
 
-      // Clear any existing polling
-      if (pollIntervalRef.current) {
-        clearInterval(pollIntervalRef.current)
+      const data = await telegramConnectMutation.mutateAsync()
+      const url = (data as { telegramUrl?: string }).telegramUrl
+      if (url) {
+        setTelegramConnectionUrl(url)
+        window.open(url, '_blank')
       }
-      if (pollTimeoutRef.current) {
-        clearTimeout(pollTimeoutRef.current)
-      }
-
-      const response = await fetch('/api/telegram/connect', {
-        method: 'POST',
-      })
-
-      if (!response.ok) {
-        const errorData = await response.json()
-        throw new Error(errorData.error || 'Failed to generate connection link')
-      }
-
-      const data = await response.json()
-      setTelegramConnectionUrl(data.telegramUrl)
-
-      // Auto-open the link in a new tab
-      window.open(data.telegramUrl, '_blank')
-
-      // Poll for connection status
-      pollIntervalRef.current = setInterval(async () => {
-        try {
-          const response = await fetch('/api/user/settings')
-          if (response.ok) {
-            const data = await response.json()
-            // Check if telegram is now connected
-            if (data.user?.telegram_chat_id) {
-              if (pollIntervalRef.current) {
-                clearInterval(pollIntervalRef.current)
-                pollIntervalRef.current = null
-              }
-              if (pollTimeoutRef.current) {
-                clearTimeout(pollTimeoutRef.current)
-                pollTimeoutRef.current = null
-              }
-              setTelegramConnectionUrl(null)
-              // Update settings to show connected state
-              setSettings(data.user)
-            }
-          }
-        } catch (err) {
-          console.error('Error polling for connection status:', err)
-        }
-      }, 3000) // Poll every 3 seconds
-
-      // Stop polling after 10 minutes (link expires)
-      pollTimeoutRef.current = setTimeout(() => {
-        if (pollIntervalRef.current) {
-          clearInterval(pollIntervalRef.current)
-          pollIntervalRef.current = null
-        }
-        setTelegramConnectionUrl(null)
-      }, 10 * 60 * 1000)
-
     } catch (err) {
-      console.error('Error connecting Telegram:', err)
       setError(err instanceof Error ? err.message : 'Failed to connect Telegram')
-    } finally {
-      setConnectingTelegram(false)
     }
   }
 
   const disconnectTelegram = async () => {
     try {
-      setDisconnectingTelegram(true)
       setError(null)
-
-      const response = await fetch('/api/user/settings', {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          telegram_chat_id: null,
-        }),
-      })
-
-      if (!response.ok) {
-        const errorData = await response.json()
-        throw new Error(errorData.error || 'Failed to disconnect Telegram')
-      }
-
-      const data = await response.json()
-      setSettings(data.user)
+      await updateSettingsMutation.mutateAsync({ telegram_chat_id: null })
     } catch (err) {
-      console.error('Error disconnecting Telegram:', err)
       setError(err instanceof Error ? err.message : 'Failed to disconnect Telegram')
-    } finally {
-      setDisconnectingTelegram(false)
     }
   }
 
   const testTelegram = async () => {
     try {
-      setTestingTelegram(true)
       setError(null)
       setTelegramTestSuccess(null)
 
-      const response = await fetch('/api/user/settings', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          test_type: 'telegram',
-        }),
-      })
-
-      if (!response.ok) {
-        const errorData = await response.json()
-        throw new Error(errorData.error || 'Failed to send test notification')
-      }
-
+      await testTelegramMutation.mutateAsync()
       setTelegramTestSuccess(true)
       setTimeout(() => setTelegramTestSuccess(null), 5000)
     } catch (err) {
-      console.error('Error testing Telegram:', err)
       setTelegramTestSuccess(false)
       setError(err instanceof Error ? err.message : 'Failed to send test notification')
-    } finally {
-      setTestingTelegram(false)
     }
   }
+
+  const saving = updateSettingsMutation.isPending
+  const savingExplorer = updateSettingsMutation.isPending
+  const testingSlack = testSlackMutation.isPending
+  const testingTelegram = testTelegramMutation.isPending
+  const connectingTelegram = telegramConnectMutation.isPending
+  const disconnectingTelegram = updateSettingsMutation.isPending
 
   if (!isAuthenticated && !authLoading) {
     return (
@@ -336,7 +152,7 @@ export function UserSettings() {
     )
   }
 
-  if (loading || authLoading) {
+  if (isLoading || authLoading) {
     return (
       <div className="space-y-6">
         {/* Account Information Skeleton */}
@@ -383,12 +199,12 @@ export function UserSettings() {
     )
   }
 
-  if (error && !settings) {
+  if (isError && !settings) {
     return (
       <Card className="p-6">
         <div className="text-center text-destructive">
-          <p>Error: {error}</p>
-          <Button onClick={fetchSettings} className="mt-4">
+          <p>Error: {queryError instanceof Error ? queryError.message : 'Failed to fetch settings'}</p>
+          <Button onClick={() => refetch()} className="mt-4">
             Retry
           </Button>
         </div>

@@ -1,6 +1,5 @@
 'use client'
 
-import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
@@ -8,42 +7,14 @@ import { Button } from '@/components/ui/button'
 import { formatRelativeTime, truncateString } from '@/lib/utils'
 import { ExternalLink, Plus, Code, Activity, AlertCircle } from 'lucide-react'
 import { useAuth } from '@/lib/auth/auth-context'
-
-interface MonitoredProgram {
-  id: string
-  program_id: string
-  name: string
-  description?: string
-  is_active: boolean
-  created_at: string
-  updated_at: string
-  last_checked_at?: string | null
-}
+import { usePrograms } from '@/hooks/use-programs'
 
 export function MonitoredPrograms() {
   const { isAdmin } = useAuth()
-  const [programs, setPrograms] = useState<MonitoredProgram[]>([])
-  const [loading, setLoading] = useState(true)
+  const { data, isLoading } = usePrograms()
+  const programs = data?.programs || []
 
-  useEffect(() => {
-    fetchPrograms()
-  }, [])
-
-  const fetchPrograms = async () => {
-    try {
-      const response = await fetch('/api/programs')
-      if (response.ok) {
-        const data = await response.json()
-        setPrograms(data.programs || [])
-      }
-    } catch (error) {
-      console.error('Error fetching programs:', error)
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  if (loading) {
+  if (isLoading) {
     return (
       <Card>
         <CardHeader>
