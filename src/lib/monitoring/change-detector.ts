@@ -1,72 +1,74 @@
-import type { SolanaIdl } from '../solana/idl-fetcher'
-import type { ChangeType, ChangeSeverity, ChangeDetails } from '../db/changes'
+import type { SolanaIdl } from "../solana/idl-fetcher";
+import type { ChangeType, ChangeSeverity, ChangeDetails } from "../db/changes";
 
 export interface DetectedChange {
-  changeType: ChangeType
-  changeSummary: string
-  changeDetails: ChangeDetails
-  severity: ChangeSeverity
+  changeType: ChangeType;
+  changeSummary: string;
+  changeDetails: ChangeDetails;
+  severity: ChangeSeverity;
 }
 
 /**
  * Detects changes between two IDL versions
  */
 export function detectChanges(oldIdl: SolanaIdl | null, newIdl: SolanaIdl): DetectedChange[] {
-  const changes: DetectedChange[] = []
+  const changes: DetectedChange[] = [];
 
   if (!oldIdl) {
     // First time seeing this IDL - not really a "change" but we can log it
-    return [{
-      changeType: 'instruction_added',
-      changeSummary: `Initial IDL detected for program ${newIdl.name}`,
-      changeDetails: {
-        changeType: 'instruction_added',
-        itemName: newIdl.name,
-        newValue: newIdl,
-        description: 'Initial IDL snapshot created'
+    return [
+      {
+        changeType: "instruction_added",
+        changeSummary: `Initial IDL detected for program ${newIdl.name}`,
+        changeDetails: {
+          changeType: "instruction_added",
+          itemName: newIdl.name,
+          newValue: newIdl,
+          description: "Initial IDL snapshot created",
+        },
+        severity: "low",
       },
-      severity: 'low'
-    }]
+    ];
   }
 
   // Detect instruction changes
-  changes.push(...detectInstructionChanges(oldIdl, newIdl))
+  changes.push(...detectInstructionChanges(oldIdl, newIdl));
 
   // Detect type changes
-  changes.push(...detectTypeChanges(oldIdl, newIdl))
+  changes.push(...detectTypeChanges(oldIdl, newIdl));
 
   // Detect account changes
-  changes.push(...detectAccountChanges(oldIdl, newIdl))
+  changes.push(...detectAccountChanges(oldIdl, newIdl));
 
   // Detect error changes
-  changes.push(...detectErrorChanges(oldIdl, newIdl))
+  changes.push(...detectErrorChanges(oldIdl, newIdl));
 
-  return changes
+  return changes;
 }
 
 /**
  * Detects changes in instructions
  */
 function detectInstructionChanges(oldIdl: SolanaIdl, newIdl: SolanaIdl): DetectedChange[] {
-  const changes: DetectedChange[] = []
-  
-  const oldInstructions = new Map(oldIdl.instructions?.map(i => [i.name, i]) || [])
-  const newInstructions = new Map(newIdl.instructions?.map(i => [i.name, i]) || [])
+  const changes: DetectedChange[] = [];
+
+  const oldInstructions = new Map(oldIdl.instructions?.map((i) => [i.name, i]) || []);
+  const newInstructions = new Map(newIdl.instructions?.map((i) => [i.name, i]) || []);
 
   // Check for added instructions
   for (const [name, instruction] of newInstructions) {
     if (!oldInstructions.has(name)) {
       changes.push({
-        changeType: 'instruction_added',
+        changeType: "instruction_added",
         changeSummary: `New instruction '${name}' added`,
         changeDetails: {
-          changeType: 'instruction_added',
+          changeType: "instruction_added",
           itemName: name,
           newValue: instruction,
-          description: `Added new instruction with ${instruction.accounts?.length || 0} accounts and ${instruction.args?.length || 0} arguments`
+          description: `Added new instruction with ${instruction.accounts?.length || 0} accounts and ${instruction.args?.length || 0} arguments`,
         },
-        severity: calculateInstructionSeverity('added', instruction)
-      })
+        severity: calculateInstructionSeverity("added", instruction),
+      });
     }
   }
 
@@ -74,66 +76,66 @@ function detectInstructionChanges(oldIdl: SolanaIdl, newIdl: SolanaIdl): Detecte
   for (const [name, instruction] of oldInstructions) {
     if (!newInstructions.has(name)) {
       changes.push({
-        changeType: 'instruction_removed',
+        changeType: "instruction_removed",
         changeSummary: `Instruction '${name}' removed`,
         changeDetails: {
-          changeType: 'instruction_removed',
+          changeType: "instruction_removed",
           itemName: name,
           oldValue: instruction,
-          description: `Removed instruction that had ${instruction.accounts?.length || 0} accounts and ${instruction.args?.length || 0} arguments`
+          description: `Removed instruction that had ${instruction.accounts?.length || 0} accounts and ${instruction.args?.length || 0} arguments`,
         },
-        severity: 'critical' // Removing instructions is always critical
-      })
+        severity: "critical", // Removing instructions is always critical
+      });
     }
   }
 
   // Check for modified instructions
   for (const [name, newInstruction] of newInstructions) {
-    const oldInstruction = oldInstructions.get(name)
+    const oldInstruction = oldInstructions.get(name);
     if (oldInstruction && !deepEqual(oldInstruction, newInstruction)) {
-      const modificationDetails = getInstructionModificationDetails(oldInstruction, newInstruction)
-      
+      const modificationDetails = getInstructionModificationDetails(oldInstruction, newInstruction);
+
       changes.push({
-        changeType: 'instruction_modified',
+        changeType: "instruction_modified",
         changeSummary: `Instruction '${name}' modified: ${modificationDetails.summary}`,
         changeDetails: {
-          changeType: 'instruction_modified',
+          changeType: "instruction_modified",
           itemName: name,
           oldValue: oldInstruction,
           newValue: newInstruction,
-          description: modificationDetails.description
+          description: modificationDetails.description,
         },
-        severity: modificationDetails.severity
-      })
+        severity: modificationDetails.severity,
+      });
     }
   }
 
-  return changes
+  return changes;
 }
 
 /**
  * Detects changes in types
  */
 function detectTypeChanges(oldIdl: SolanaIdl, newIdl: SolanaIdl): DetectedChange[] {
-  const changes: DetectedChange[] = []
-  
-  const oldTypes = new Map(oldIdl.types?.map(t => [t.name, t]) || [])
-  const newTypes = new Map(newIdl.types?.map(t => [t.name, t]) || [])
+  const changes: DetectedChange[] = [];
+
+  const oldTypes = new Map(oldIdl.types?.map((t) => [t.name, t]) || []);
+  const newTypes = new Map(newIdl.types?.map((t) => [t.name, t]) || []);
 
   // Check for added types
   for (const [name, type] of newTypes) {
     if (!oldTypes.has(name)) {
       changes.push({
-        changeType: 'type_added',
+        changeType: "type_added",
         changeSummary: `New type '${name}' added`,
         changeDetails: {
-          changeType: 'type_added',
+          changeType: "type_added",
           itemName: name,
           newValue: type,
-          description: `Added new ${type.type.kind} type`
+          description: `Added new ${type.type?.kind || "unknown"} type`,
         },
-        severity: 'low'
-      })
+        severity: "low",
+      });
     }
   }
 
@@ -141,64 +143,64 @@ function detectTypeChanges(oldIdl: SolanaIdl, newIdl: SolanaIdl): DetectedChange
   for (const [name, type] of oldTypes) {
     if (!newTypes.has(name)) {
       changes.push({
-        changeType: 'type_removed',
+        changeType: "type_removed",
         changeSummary: `Type '${name}' removed`,
         changeDetails: {
-          changeType: 'type_removed',
+          changeType: "type_removed",
           itemName: name,
           oldValue: type,
-          description: `Removed ${type.type.kind} type`
+          description: `Removed ${type.type?.kind || "unknown"} type`,
         },
-        severity: 'high' // Removing types can break compatibility
-      })
+        severity: "high", // Removing types can break compatibility
+      });
     }
   }
 
   // Check for modified types
   for (const [name, newType] of newTypes) {
-    const oldType = oldTypes.get(name)
+    const oldType = oldTypes.get(name);
     if (oldType && !deepEqual(oldType, newType)) {
       changes.push({
-        changeType: 'type_modified',
+        changeType: "type_modified",
         changeSummary: `Type '${name}' modified`,
         changeDetails: {
-          changeType: 'type_modified',
+          changeType: "type_modified",
           itemName: name,
           oldValue: oldType,
           newValue: newType,
-          description: `Modified ${newType.type.kind} type structure`
+          description: `Modified ${newType.type?.kind || "unknown"} type structure`,
         },
-        severity: 'medium'
-      })
+        severity: "medium",
+      });
     }
   }
 
-  return changes
+  return changes;
 }
 
 /**
  * Detects changes in accounts
  */
 function detectAccountChanges(oldIdl: SolanaIdl, newIdl: SolanaIdl): DetectedChange[] {
-  const changes: DetectedChange[] = []
-  
-  const oldAccounts = new Map(oldIdl.accounts?.map(a => [a.name, a]) || [])
-  const newAccounts = new Map(newIdl.accounts?.map(a => [a.name, a]) || [])
+  const changes: DetectedChange[] = [];
+
+  const oldAccounts = new Map(oldIdl.accounts?.map((a) => [a.name, a]) || []);
+  const newAccounts = new Map(newIdl.accounts?.map((a) => [a.name, a]) || []);
 
   // Check for added accounts
   for (const [name, account] of newAccounts) {
     if (!oldAccounts.has(name)) {
       changes.push({
-        changeType: 'account_added',
+        changeType: "account_added",
         changeSummary: `New account type '${name}' added`,
         changeDetails: {
-          changeType: 'account_added',
+          changeType: "account_added",
           itemName: name,
           newValue: account,
-          description: `Added new account type with ${account.type.fields?.length || 0} fields`
+          description: `Added new account type with ${account.type?.fields?.length || 0} fields`,
         },
-        severity: 'low'
-      })
+        severity: "low",
+      });
     }
   }
 
@@ -206,198 +208,216 @@ function detectAccountChanges(oldIdl: SolanaIdl, newIdl: SolanaIdl): DetectedCha
   for (const [name, account] of oldAccounts) {
     if (!newAccounts.has(name)) {
       changes.push({
-        changeType: 'account_removed',
+        changeType: "account_removed",
         changeSummary: `Account type '${name}' removed`,
         changeDetails: {
-          changeType: 'account_removed',
+          changeType: "account_removed",
           itemName: name,
           oldValue: account,
-          description: `Removed account type that had ${account.type.fields?.length || 0} fields`
+          description: `Removed account type that had ${account.type?.fields?.length || 0} fields`,
         },
-        severity: 'high'
-      })
+        severity: "high",
+      });
     }
   }
 
   // Check for modified accounts
   for (const [name, newAccount] of newAccounts) {
-    const oldAccount = oldAccounts.get(name)
+    const oldAccount = oldAccounts.get(name);
     if (oldAccount && !deepEqual(oldAccount, newAccount)) {
       changes.push({
-        changeType: 'account_modified',
+        changeType: "account_modified",
         changeSummary: `Account type '${name}' modified`,
         changeDetails: {
-          changeType: 'account_modified',
+          changeType: "account_modified",
           itemName: name,
           oldValue: oldAccount,
           newValue: newAccount,
-          description: `Modified account type structure`
+          description: `Modified account type structure`,
         },
-        severity: 'medium'
-      })
+        severity: "medium",
+      });
     }
   }
 
-  return changes
+  return changes;
 }
 
 /**
  * Detects changes in errors
  */
 function detectErrorChanges(oldIdl: SolanaIdl, newIdl: SolanaIdl): DetectedChange[] {
-  const changes: DetectedChange[] = []
-  
-  const oldErrors = new Map(oldIdl.errors?.map(e => [e.code, e]) || [])
-  const newErrors = new Map(newIdl.errors?.map(e => [e.code, e]) || [])
+  const changes: DetectedChange[] = [];
+
+  const oldErrors = new Map(oldIdl.errors?.map((e) => [e.code ?? e.name, e]) || []);
+  const newErrors = new Map(newIdl.errors?.map((e) => [e.code ?? e.name, e]) || []);
 
   // Check for added errors
-  for (const [code, error] of newErrors) {
-    if (!oldErrors.has(code)) {
+  for (const [key, error] of newErrors) {
+    if (!oldErrors.has(key)) {
       changes.push({
-        changeType: 'error_added',
-        changeSummary: `New error code ${code} added: ${error.name}`,
+        changeType: "error_added",
+        changeSummary: `New error ${formatErrorKey(key)} added: ${error.name}`,
         changeDetails: {
-          changeType: 'error_added',
+          changeType: "error_added",
           itemName: error.name,
           newValue: error,
-          description: `Added error: ${error.msg}`
+          description: `Added error: ${error.msg || error.name}`,
         },
-        severity: 'low'
-      })
+        severity: "low",
+      });
     }
   }
 
   // Check for removed errors
-  for (const [code, error] of oldErrors) {
-    if (!newErrors.has(code)) {
+  for (const [key, error] of oldErrors) {
+    if (!newErrors.has(key)) {
       changes.push({
-        changeType: 'error_removed',
-        changeSummary: `Error code ${code} removed: ${error.name}`,
+        changeType: "error_removed",
+        changeSummary: `Error ${formatErrorKey(key)} removed: ${error.name}`,
         changeDetails: {
-          changeType: 'error_removed',
+          changeType: "error_removed",
           itemName: error.name,
           oldValue: error,
-          description: `Removed error: ${error.msg}`
+          description: `Removed error: ${error.msg || error.name}`,
         },
-        severity: 'medium'
-      })
+        severity: "medium",
+      });
     }
   }
 
   // Check for modified errors
-  for (const [code, newError] of newErrors) {
-    const oldError = oldErrors.get(code)
+  for (const [key, newError] of newErrors) {
+    const oldError = oldErrors.get(key);
     if (oldError && !deepEqual(oldError, newError)) {
       changes.push({
-        changeType: 'error_modified',
-        changeSummary: `Error code ${code} modified: ${newError.name}`,
+        changeType: "error_modified",
+        changeSummary: `Error ${formatErrorKey(key)} modified: ${newError.name}`,
         changeDetails: {
-          changeType: 'error_modified',
+          changeType: "error_modified",
           itemName: newError.name,
           oldValue: oldError,
           newValue: newError,
-          description: `Modified error message or name`
+          description: `Modified error message or name`,
         },
-        severity: 'low'
-      })
+        severity: "low",
+      });
     }
   }
 
-  return changes
+  return changes;
 }
 
 /**
  * Calculates severity for instruction changes
  */
-function calculateInstructionSeverity(changeType: 'added' | 'removed' | 'modified', instruction: any): ChangeSeverity {
-  if (changeType === 'removed') {
-    return 'critical'
+function calculateInstructionSeverity(
+  changeType: "added" | "removed" | "modified",
+  instruction: any
+): ChangeSeverity {
+  if (changeType === "removed") {
+    return "critical";
   }
 
-  if (changeType === 'added') {
+  if (changeType === "added") {
     // New instructions are generally low impact unless they're critical operations
-    const criticalNames = ['initialize', 'close', 'withdraw', 'transfer', 'mint', 'burn']
-    const isLikelyCritical = criticalNames.some(name => 
+    const criticalNames = ["initialize", "close", "withdraw", "transfer", "mint", "burn"];
+    const isLikelyCritical = criticalNames.some((name) =>
       instruction.name.toLowerCase().includes(name)
-    )
-    return isLikelyCritical ? 'medium' : 'low'
+    );
+    return isLikelyCritical ? "medium" : "low";
   }
 
-  return 'medium' // Modified instructions
+  return "medium"; // Modified instructions
 }
 
 /**
  * Gets detailed information about instruction modifications
  */
-function getInstructionModificationDetails(oldInstruction: any, newInstruction: any): {
-  summary: string
-  description: string
-  severity: ChangeSeverity
+function getInstructionModificationDetails(
+  oldInstruction: any,
+  newInstruction: any
+): {
+  summary: string;
+  description: string;
+  severity: ChangeSeverity;
 } {
-  const changes: string[] = []
-  let severity: ChangeSeverity = 'low'
+  const changes: string[] = [];
+  let severity: ChangeSeverity = "low";
 
   // Check accounts changes
-  const oldAccounts = oldInstruction.accounts || []
-  const newAccounts = newInstruction.accounts || []
-  
+  const oldAccounts = oldInstruction.accounts || [];
+  const newAccounts = newInstruction.accounts || [];
+
   if (oldAccounts.length !== newAccounts.length) {
-    changes.push(`accounts count changed from ${oldAccounts.length} to ${newAccounts.length}`)
-    severity = 'high' // Changing account structure is significant
+    changes.push(`accounts count changed from ${oldAccounts.length} to ${newAccounts.length}`);
+    severity = "high"; // Changing account structure is significant
   }
 
   // Check args changes
-  const oldArgs = oldInstruction.args || []
-  const newArgs = newInstruction.args || []
-  
+  const oldArgs = oldInstruction.args || [];
+  const newArgs = newInstruction.args || [];
+
   if (oldArgs.length !== newArgs.length) {
-    changes.push(`arguments count changed from ${oldArgs.length} to ${newArgs.length}`)
-    severity = 'medium'
+    changes.push(`arguments count changed from ${oldArgs.length} to ${newArgs.length}`);
+    severity = "medium";
   }
 
   // Check for account permission changes
   for (let i = 0; i < Math.min(oldAccounts.length, newAccounts.length); i++) {
-    const oldAcc = oldAccounts[i]
-    const newAcc = newAccounts[i]
-    
-    if (oldAcc.isMut !== newAcc.isMut) {
-      changes.push(`account '${newAcc.name}' mutability changed`)
-      severity = 'high'
+    const oldAcc = oldAccounts[i];
+    const newAcc = newAccounts[i];
+
+    if (isWritableAccount(oldAcc) !== isWritableAccount(newAcc)) {
+      changes.push(`account '${newAcc.name}' mutability changed`);
+      severity = "high";
     }
-    
-    if (oldAcc.isSigner !== newAcc.isSigner) {
-      changes.push(`account '${newAcc.name}' signer requirement changed`)
-      severity = 'critical'
+
+    if (isSignerAccount(oldAcc) !== isSignerAccount(newAcc)) {
+      changes.push(`account '${newAcc.name}' signer requirement changed`);
+      severity = "critical";
     }
   }
 
-  const summary = changes.length > 0 ? changes.join(', ') : 'structure modified'
-  const description = `Instruction modification details: ${summary}`
+  const summary = changes.length > 0 ? changes.join(", ") : "structure modified";
+  const description = `Instruction modification details: ${summary}`;
 
-  return { summary, description, severity }
+  return { summary, description, severity };
+}
+
+function isWritableAccount(account: any): boolean {
+  return Boolean(account.isMut ?? account.writable);
+}
+
+function isSignerAccount(account: any): boolean {
+  return Boolean(account.isSigner ?? account.signer);
+}
+
+function formatErrorKey(key: string | number): string {
+  return typeof key === "number" ? `code ${key}` : `'${key}'`;
 }
 
 /**
  * Deep equality check for objects
  */
 function deepEqual(obj1: any, obj2: any): boolean {
-  if (obj1 === obj2) return true
-  
-  if (obj1 == null || obj2 == null) return false
-  
-  if (typeof obj1 !== typeof obj2) return false
-  
-  if (typeof obj1 !== 'object') return obj1 === obj2
-  
-  const keys1 = Object.keys(obj1)
-  const keys2 = Object.keys(obj2)
-  
-  if (keys1.length !== keys2.length) return false
-  
+  if (obj1 === obj2) return true;
+
+  if (obj1 == null || obj2 == null) return false;
+
+  if (typeof obj1 !== typeof obj2) return false;
+
+  if (typeof obj1 !== "object") return obj1 === obj2;
+
+  const keys1 = Object.keys(obj1);
+  const keys2 = Object.keys(obj2);
+
+  if (keys1.length !== keys2.length) return false;
+
   for (const key of keys1) {
-    if (!keys2.includes(key)) return false
-    if (!deepEqual(obj1[key], obj2[key])) return false
+    if (!keys2.includes(key)) return false;
+    if (!deepEqual(obj1[key], obj2[key])) return false;
   }
-  
-  return true
+
+  return true;
 }
