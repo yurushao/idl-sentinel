@@ -1,5 +1,11 @@
 import { supabaseAdmin } from '../supabase'
 import type { IdlChange } from '../supabase'
+import {
+  getDeliveredChangeIdsByUser,
+  getFullyDeliveredChangeIds,
+  markChangesChannelNotified,
+  recordNotificationDelivery
+} from './delivery'
 
 export interface SlackWebhookConfig {
   webhookUrl: string
@@ -268,69 +274,106 @@ export async function sendWatchlistNotifications(): Promise<{
     const programDbIds = Array.from(changesByProgram.keys())
     const watchersByProgram = await getBatchWatchers(programDbIds)
 
-    // Send notifications in parallel with concurrency control
-    const NOTIFICATION_CONCURRENCY = 5 // Send to 5 watchers concurrently
+    const NOTIFICATION_CONCURRENCY = 5
 
-    const processProgram = async (programDbId: string, programChanges: typeof changes) => {
+    const processProgram = async (programDbId: string, programChanges: any[]) => {
       try {
         const programName = programChanges[0].monitored_programs.name
         const programId = programChanges[0].monitored_programs.program_id
+        const changeIds = programChanges.map((c: any) => c.id)
 
         const watchers = watchersByProgram.get(programDbId) || []
 
         if (watchers.length === 0) {
           console.log(`No watchers with Slack webhooks for program ${programName}`)
-          // Still mark as notified even if no watchers
-          const changeIds = programChanges.map((c: any) => c.id)
-          await supabaseAdmin
-            .from('idl_changes')
-            .update({ slack_notified: true })
-            .in('id', changeIds)
+          await markChangesChannelNotified('slack', changeIds)
           return
         }
 
-        const message = formatSlackMessage(programName, programId, programChanges)
+        const deliveredByUser = await getDeliveredChangeIdsByUser(
+          'slack',
+          watchers.map((watcher) => watcher.userId),
+          changeIds
+        )
 
-        // Send to watchers in parallel batches
-        let successfulSends = 0
         for (let i = 0; i < watchers.length; i += NOTIFICATION_CONCURRENCY) {
           const batch = watchers.slice(i, i + NOTIFICATION_CONCURRENCY)
           const results = await Promise.allSettled(
-            batch.map(watcher => sendSlackNotification(watcher.webhookUrl, message))
+            batch.map(async (watcher) => {
+              const deliveredChangeIds = deliveredByUser.get(watcher.userId) || new Set<string>()
+              const pendingChanges = programChanges.filter(
+                (change: any) => !deliveredChangeIds.has(change.id)
+              )
+
+              if (pendingChanges.length === 0) {
+                return { watcher, pendingChangeIds: [] as string[], success: true, skipped: true }
+              }
+
+              const message = formatSlackMessage(programName, programId, pendingChanges)
+              const success = await sendSlackNotification(watcher.webhookUrl, message)
+              const pendingChangeIds = pendingChanges.map((change: any) => change.id)
+
+              await recordNotificationDelivery(
+                'slack',
+                watcher.userId,
+                pendingChangeIds,
+                success ? 'delivered' : 'failed',
+                success ? undefined : 'Slack webhook send failed'
+              )
+
+              return { watcher, pendingChangeIds, success, skipped: false }
+            })
           )
 
-          for (let j = 0; j < results.length; j++) {
-            const watcher = batch[j]
-            const promiseResult = results[j]
-            if (promiseResult.status === 'fulfilled' && promiseResult.value) {
-              successfulSends++
-              console.log(`Sent Slack notification to user ${watcher.walletAddress.substring(0, 8)}... for ${programName}`)
-            } else {
+          for (const promiseResult of results) {
+            if (promiseResult.status === 'fulfilled') {
+              const { watcher, pendingChangeIds, success, skipped } = promiseResult.value
+
+              if (skipped) {
+                continue
+              }
+
+              if (success) {
+                const userDeliveries = deliveredByUser.get(watcher.userId) || new Set<string>()
+                for (const changeId of pendingChangeIds) {
+                  userDeliveries.add(changeId)
+                }
+                deliveredByUser.set(watcher.userId, userDeliveries)
+
+                result.sent++
+                console.log(`Sent Slack notification to user ${watcher.walletAddress.substring(0, 8)}... for ${programName}`)
+                continue
+              }
+
               result.failed++
               result.errors.push(`Failed to send to user ${watcher.walletAddress.substring(0, 8)}... for ${programName}`)
+            } else {
+              const errorMessage = promiseResult.reason instanceof Error
+                ? promiseResult.reason.message
+                : 'Unknown error'
+              result.failed++
+              result.errors.push(`Error sending Slack notification for ${programName}: ${errorMessage}`)
             }
           }
         }
 
-        if (successfulSends > 0) {
-          // Mark changes as notified
-          const changeIds = programChanges.map((c: any) => c.id)
+        const fullyDeliveredChangeIds = getFullyDeliveredChangeIds(
+          changeIds,
+          watchers.map((watcher) => watcher.userId),
+          deliveredByUser
+        )
 
-          const { error: updateError } = await supabaseAdmin
-            .from('idl_changes')
-            .update({
-              slack_notified: true,
-              slack_notified_at: new Date().toISOString()
-            })
-            .in('id', changeIds)
+        try {
+          await markChangesChannelNotified('slack', fullyDeliveredChangeIds)
+        } catch (error) {
+          const errorMessage = error instanceof Error ? error.message : 'Unknown error'
+          console.error('Error marking changes as Slack notified:', error)
+          result.errors.push(`Failed to mark changes as notified for ${programName}: ${errorMessage}`)
+          return
+        }
 
-          if (updateError) {
-            console.error('Error marking changes as Slack notified:', updateError)
-            result.errors.push(`Failed to mark changes as notified for ${programName}`)
-          } else {
-            result.sent += successfulSends
-            console.log(`Sent ${successfulSends} Slack notification(s) for ${programName} with ${programChanges.length} changes`)
-          }
+        if (fullyDeliveredChangeIds.length > 0) {
+          console.log(`Marked ${fullyDeliveredChangeIds.length} Slack change(s) as fully notified for ${programName}`)
         }
 
       } catch (error) {

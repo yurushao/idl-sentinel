@@ -132,6 +132,37 @@ COMMENT ON COLUMN idl_changes.slack_notified IS 'Flag indicating if Slack notifi
 COMMENT ON COLUMN idl_changes.telegram_user_notified IS 'Flag indicating if Telegram notifications have been sent';
 
 -- =====================================================
+-- NOTIFICATION DELIVERIES TABLE
+-- =====================================================
+-- Per-user delivery receipts used to retry partial notification failures
+CREATE TABLE IF NOT EXISTS notification_deliveries (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    change_id UUID NOT NULL REFERENCES idl_changes(id) ON DELETE CASCADE,
+    user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    channel TEXT NOT NULL CHECK (channel IN ('slack', 'telegram_user')),
+    status TEXT NOT NULL DEFAULT 'pending' CHECK (status IN ('pending', 'delivered', 'failed')),
+    attempts INTEGER NOT NULL DEFAULT 0,
+    last_error TEXT,
+    last_attempt_at TIMESTAMPTZ,
+    delivered_at TIMESTAMPTZ,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW(),
+
+    UNIQUE(change_id, user_id, channel)
+);
+
+-- Indexes for notification_deliveries table
+CREATE INDEX IF NOT EXISTS idx_notification_deliveries_change ON notification_deliveries(change_id);
+CREATE INDEX IF NOT EXISTS idx_notification_deliveries_user_channel ON notification_deliveries(user_id, channel);
+CREATE INDEX IF NOT EXISTS idx_notification_deliveries_pending ON notification_deliveries(channel, status, last_attempt_at)
+    WHERE status <> 'delivered';
+
+-- Comments
+COMMENT ON TABLE notification_deliveries IS 'Per-user notification delivery receipts for retry-safe change notifications';
+COMMENT ON COLUMN notification_deliveries.channel IS 'Notification channel: slack or telegram_user';
+COMMENT ON COLUMN notification_deliveries.status IS 'Delivery status for this user/change/channel';
+
+-- =====================================================
 -- USER WATCHLIST TABLE
 -- =====================================================
 -- Programs that users are watching/subscribed to
@@ -368,6 +399,13 @@ CREATE TRIGGER update_program_activation_payments_updated_at
     FOR EACH ROW
     EXECUTE FUNCTION update_updated_at_column();
 
+-- Apply trigger to notification_deliveries
+DROP TRIGGER IF EXISTS update_notification_deliveries_updated_at ON notification_deliveries;
+CREATE TRIGGER update_notification_deliveries_updated_at
+    BEFORE UPDATE ON notification_deliveries
+    FOR EACH ROW
+    EXECUTE FUNCTION update_updated_at_column();
+
 -- =====================================================
 -- ROW LEVEL SECURITY (RLS) POLICIES
 -- =====================================================
@@ -377,6 +415,7 @@ ALTER TABLE users ENABLE ROW LEVEL SECURITY;
 ALTER TABLE monitored_programs ENABLE ROW LEVEL SECURITY;
 ALTER TABLE idl_snapshots ENABLE ROW LEVEL SECURITY;
 ALTER TABLE idl_changes ENABLE ROW LEVEL SECURITY;
+ALTER TABLE notification_deliveries ENABLE ROW LEVEL SECURITY;
 ALTER TABLE user_watchlist ENABLE ROW LEVEL SECURITY;
 ALTER TABLE program_activation_payments ENABLE ROW LEVEL SECURITY;
 ALTER TABLE telegram_connection_tokens ENABLE ROW LEVEL SECURITY;
@@ -467,6 +506,16 @@ CREATE POLICY "Enable write access for all users" ON idl_changes
     FOR ALL USING (true);
 
 -- =====================================================
+-- NOTIFICATION DELIVERIES TABLE POLICIES
+-- =====================================================
+DROP POLICY IF EXISTS "Service role full access" ON notification_deliveries;
+
+-- Delivery receipts are maintained only by server-side notification jobs.
+CREATE POLICY "Service role full access" ON notification_deliveries
+    FOR ALL
+    USING (auth.role() = 'service_role');
+
+-- =====================================================
 -- USER WATCHLIST TABLE POLICIES
 -- =====================================================
 DROP POLICY IF EXISTS "Enable read access for all users" ON user_watchlist;
@@ -536,6 +585,7 @@ GRANT ALL PRIVILEGES ON users TO anon, authenticated;
 GRANT ALL PRIVILEGES ON monitored_programs TO anon, authenticated;
 GRANT ALL PRIVILEGES ON idl_snapshots TO anon, authenticated;
 GRANT ALL PRIVILEGES ON idl_changes TO anon, authenticated;
+GRANT ALL PRIVILEGES ON notification_deliveries TO anon, authenticated;
 GRANT ALL PRIVILEGES ON user_watchlist TO anon, authenticated;
 GRANT ALL PRIVILEGES ON program_activation_payments TO anon, authenticated;
 GRANT ALL PRIVILEGES ON telegram_connection_tokens TO anon, authenticated;

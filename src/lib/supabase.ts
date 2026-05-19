@@ -50,6 +50,20 @@ export interface IdlChange {
   detected_at: string;
 }
 
+export interface NotificationDelivery {
+  id: string;
+  change_id: string;
+  user_id: string;
+  channel: "slack" | "telegram_user";
+  status: "pending" | "delivered" | "failed";
+  attempts: number;
+  last_error?: string | null;
+  last_attempt_at?: string | null;
+  delivered_at?: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
 export interface MonitoringLog {
   id: string;
   run_id: string;

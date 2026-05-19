@@ -1,5 +1,11 @@
 import { supabaseAdmin } from '../supabase'
 import type { IdlChange } from '../supabase'
+import {
+  getDeliveredChangeIdsByUser,
+  getFullyDeliveredChangeIds,
+  markChangesChannelNotified,
+  recordNotificationDelivery
+} from './delivery'
 
 export interface TelegramUserConfig {
   userId: string
@@ -210,24 +216,56 @@ export async function sendTelegramWatchlistNotifications(): Promise<{
 
         if (watchers.length === 0) {
           console.log(`No watchers with Telegram configured for program ${programName}`)
-          // Still mark as notified even if no watchers
           const changeIds = programChanges.map((c: any) => c.id)
-          await supabaseAdmin
-            .from('idl_changes')
-            .update({ telegram_user_notified: true })
-            .in('id', changeIds)
+          await markChangesChannelNotified('telegram_user', changeIds)
           continue
         }
 
-        const message = formatTelegramMessage(programName, programId, programChanges)
+        const changeIds = programChanges.map((c: any) => c.id)
+        const deliveredByUser = await getDeliveredChangeIdsByUser(
+          'telegram_user',
+          watchers.map((watcher) => watcher.userId),
+          changeIds
+        )
 
         // Send to each watcher's Telegram
-        let successfulSends = 0
         for (const watcher of watchers) {
+          const deliveredChangeIds = deliveredByUser.get(watcher.userId) || new Set<string>()
+          const pendingChanges = programChanges.filter(
+            (change: any) => !deliveredChangeIds.has(change.id)
+          )
+
+          if (pendingChanges.length === 0) {
+            continue
+          }
+
+          const message = formatTelegramMessage(programName, programId, pendingChanges)
           const success = await sendTelegramUserNotification(watcher, message)
+          const pendingChangeIds = pendingChanges.map((change: any) => change.id)
+
+          try {
+            await recordNotificationDelivery(
+              'telegram_user',
+              watcher.userId,
+              pendingChangeIds,
+              success ? 'delivered' : 'failed',
+              success ? undefined : 'Telegram send failed'
+            )
+          } catch (error) {
+            const errorMessage = error instanceof Error ? error.message : 'Unknown error'
+            result.failed++
+            result.errors.push(`Failed to record Telegram delivery for user ${watcher.walletAddress.substring(0, 8)}... for ${programName}: ${errorMessage}`)
+            continue
+          }
 
           if (success) {
-            successfulSends++
+            const userDeliveries = deliveredByUser.get(watcher.userId) || new Set<string>()
+            for (const changeId of pendingChangeIds) {
+              userDeliveries.add(changeId)
+            }
+            deliveredByUser.set(watcher.userId, userDeliveries)
+
+            result.sent++
             console.log(`Sent Telegram notification to user ${watcher.walletAddress.substring(0, 8)}... for ${programName}`)
           } else {
             result.failed++
@@ -238,25 +276,23 @@ export async function sendTelegramWatchlistNotifications(): Promise<{
           await new Promise(resolve => setTimeout(resolve, 200))
         }
 
-        if (successfulSends > 0) {
-          // Mark changes as notified
-          const changeIds = programChanges.map((c: any) => c.id)
+        const fullyDeliveredChangeIds = getFullyDeliveredChangeIds(
+          changeIds,
+          watchers.map((watcher) => watcher.userId),
+          deliveredByUser
+        )
 
-          const { error: updateError } = await supabaseAdmin
-            .from('idl_changes')
-            .update({
-              telegram_user_notified: true,
-              telegram_user_notified_at: new Date().toISOString()
-            })
-            .in('id', changeIds)
+        try {
+          await markChangesChannelNotified('telegram_user', fullyDeliveredChangeIds)
+        } catch (error) {
+          const errorMessage = error instanceof Error ? error.message : 'Unknown error'
+          console.error('Error marking changes as Telegram notified:', error)
+          result.errors.push(`Failed to mark changes as notified for ${programName}: ${errorMessage}`)
+          continue
+        }
 
-          if (updateError) {
-            console.error('Error marking changes as Telegram notified:', updateError)
-            result.errors.push(`Failed to mark changes as notified for ${programName}`)
-          } else {
-            result.sent += successfulSends
-            console.log(`Sent ${successfulSends} Telegram notification(s) for ${programName} with ${programChanges.length} changes`)
-          }
+        if (fullyDeliveredChangeIds.length > 0) {
+          console.log(`Marked ${fullyDeliveredChangeIds.length} Telegram change(s) as fully notified for ${programName}`)
         }
 
         // Add delay between programs
