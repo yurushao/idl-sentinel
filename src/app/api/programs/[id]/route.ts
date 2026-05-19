@@ -52,9 +52,10 @@ export async function PUT(
       )
     }
 
-    // Only admins can update programs (strict check)
-    // If owner_id exists, allow owners too, but if it's null, only admin
-    if (!user.isAdmin && existingProgram.owner_id !== user.userId) {
+    const isProgramOwner = !!existingProgram.owner_id && existingProgram.owner_id === user.userId
+
+    // Only admins can update programs. Owners can update their own user-created programs.
+    if (!user.isAdmin && !isProgramOwner) {
       return NextResponse.json(
         { error: 'Only administrators can update programs' },
         { status: 403 }
@@ -158,9 +159,10 @@ export async function DELETE(
       programOwnerId: existingProgram.owner_id
     })
 
-    // Only admins can delete programs (strict check)
-    // If owner_id exists, allow owners too, but if it's null, only admin
-    if (!user.isAdmin && existingProgram.owner_id !== user.userId) {
+    const isProgramOwner = !!existingProgram.owner_id && existingProgram.owner_id === user.userId
+
+    // Only admins can delete programs. Owners can delete their own user-created programs.
+    if (!user.isAdmin && !isProgramOwner) {
       console.log('DELETE DENIED: User is not admin and does not own program')
       return NextResponse.json(
         { error: 'Only administrators can delete programs' },

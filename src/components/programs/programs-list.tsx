@@ -134,7 +134,8 @@ export function ProgramsList() {
       ) : (
         <div className="grid gap-4">
           {filteredPrograms.map((program) => {
-            const canManageProgram = isAdmin || program.owner_id === userId;
+            const isProgramOwner = !!userId && program.owner_id === userId;
+            const canManageProgram = isAdmin || isProgramOwner;
 
             return (
               <Card key={program.id}>

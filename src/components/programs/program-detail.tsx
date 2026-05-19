@@ -77,7 +77,8 @@ export function ProgramDetail({ programId }: ProgramDetailProps) {
   const changes = changesData?.changes || [];
   const preferredExplorer: SolanaExplorer =
     settingsData?.user?.preferred_explorer || "explorer.solana.com";
-  const canManageProgram = !!program && (isAdmin || program.owner_id === userId);
+  const isProgramOwner = !!program && !!userId && program.owner_id === userId;
+  const canManageProgram = !!program && (isAdmin || isProgramOwner);
 
   const [refreshing, setRefreshing] = useState(false);
 
