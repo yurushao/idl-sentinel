@@ -47,15 +47,28 @@ export async function GET(request: NextRequest) {
     console.log("Slack notification result:", slackResult);
     console.log("Telegram user notification result:", telegramUserResult);
 
-    return NextResponse.json({
-      success: true,
-      message: "IDL monitoring and notifications completed",
-      result,
-      notifications: {
-        telegram_user: telegramUserResult,
-        slack: slackResult,
+    const errors = [
+      ...result.errors.map((error) => `monitoring:${error.programId}:${error.error}`),
+      ...slackResult.errors.map((error) => `slack:${error}`),
+      ...telegramUserResult.errors.map((error) => `telegram_user:${error}`),
+    ];
+    const success = errors.length === 0;
+
+    return NextResponse.json(
+      {
+        success,
+        message: success
+          ? "IDL monitoring and notifications completed"
+          : "IDL monitoring and notifications completed with errors",
+        result,
+        notifications: {
+          telegram_user: telegramUserResult,
+          slack: slackResult,
+        },
+        errors,
       },
-    });
+      { status: success ? 200 : 500 }
+    );
   } finally {
     await releaseCronLock(MONITOR_CRON_LOCK, lockRunId);
   }
