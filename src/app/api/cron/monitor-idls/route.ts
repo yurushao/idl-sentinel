@@ -9,8 +9,17 @@ import { generateUUID } from "@/lib/utils";
 const MONITOR_CRON_LOCK = "monitor-idls";
 
 export async function GET(request: NextRequest) {
+  const cronSecret = process.env.CRON_SECRET;
+  if (!cronSecret) {
+    console.error("CRON_SECRET is not configured");
+    return NextResponse.json(
+      { success: false, error: "Cron authentication is not configured" },
+      { status: 500 }
+    );
+  }
+
   const authHeader = request.headers.get("authorization");
-  if (authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
+  if (authHeader !== `Bearer ${cronSecret}`) {
     return new Response("Unauthorized", {
       status: 401,
     });
