@@ -75,7 +75,7 @@
   padding-right: 1rem !important;
   font-size: 0.875rem !important; /* text-sm */
   font-weight: 500 !important; /* medium font weight */
-  font-family: inherit !important; /* Use JetBrains Mono font */
+  font-family: inherit !important; /* Use app UI font */
   background-color: hsl(var(--primary)) !important;
   color: hsl(var(--primary-foreground)) !important;
   border-radius: calc(var(--radius) - 2px) !important;
@@ -93,7 +93,7 @@
   padding-right: 1rem !important;
   font-size: 0.875rem !important;
   font-weight: 500 !important;
-  font-family: inherit !important; /* Use JetBrains Mono font */
+  font-family: inherit !important; /* Use app UI font */
   background-color: hsl(var(--primary)) !important;
   color: hsl(var(--primary-foreground)) !important;
   letter-spacing: normal !important;

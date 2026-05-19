@@ -1,8 +1,7 @@
 'use client'
 
 import { Badge } from '@/components/ui/badge'
-import { Card } from '@/components/ui/card'
-import { ArrowRight, Plus, Minus, Edit } from 'lucide-react'
+import { Plus, Minus, Edit } from 'lucide-react'
 import dynamic from 'next/dynamic'
 import { useMemo, useState } from 'react'
 import { useTheme } from '@/lib/theme/theme-provider'
@@ -16,8 +15,8 @@ interface ChangeDetailsProps {
   details: {
     changeType: string
     itemName: string
-    oldValue?: any
-    newValue?: any
+    oldValue?: unknown
+    newValue?: unknown
     description: string
   }
 }
@@ -30,7 +29,7 @@ export function ChangeDetails({ details }: ChangeDetailsProps) {
   const [splitView, setSplitView] = useState(true)
 
   // Format values as pretty JSON strings for diff viewer
-  const formatValue = (value: any): string => {
+  const formatValue = (value: unknown): string => {
     if (value === undefined || value === null) {
       return ''
     }
@@ -127,7 +126,7 @@ export function ChangeDetails({ details }: ChangeDetailsProps) {
                     },
                     line: {
                       fontSize: '12px',
-                      fontFamily: 'ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace',
+                      fontFamily: 'var(--font-jetbrains-mono), ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace',
                       letterSpacing: '0',
                       lineHeight: '1.6',
                       whiteSpace: 'pre',
@@ -135,7 +134,7 @@ export function ChangeDetails({ details }: ChangeDetailsProps) {
                       wordWrap: 'normal',
                     },
                     contentText: {
-                      fontFamily: 'ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace',
+                      fontFamily: 'var(--font-jetbrains-mono), ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace',
                       letterSpacing: '0',
                       fontVariantLigatures: 'none',
                       fontFeatureSettings: 'normal',
@@ -169,7 +168,7 @@ export function ChangeDetails({ details }: ChangeDetailsProps) {
             View raw JSON
           </summary>
           <div className="mt-2 p-3 bg-muted rounded-md">
-            <pre className="text-xs overflow-x-auto">
+            <pre className="text-xs overflow-x-auto font-mono">
               {JSON.stringify(details, null, 2)}
             </pre>
           </div>

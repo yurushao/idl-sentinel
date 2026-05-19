@@ -1,8 +1,13 @@
 import type { Metadata } from "next";
-import { JetBrains_Mono } from "next/font/google";
+import { Geist, JetBrains_Mono } from "next/font/google";
 import "./globals.css";
 import { Providers } from "@/components/providers";
 import { Analytics } from "@vercel/analytics/next";
+
+const geistSans = Geist({
+  subsets: ["latin"],
+  variable: "--font-geist-sans",
+});
 
 const jetbrainsMono = JetBrains_Mono({
   subsets: ["latin"],
@@ -22,7 +27,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" suppressHydrationWarning>
-      <body className={jetbrainsMono.className}>
+      <body className={`${geistSans.variable} ${jetbrainsMono.variable} font-sans antialiased`}>
         <Providers>{children}</Providers>
         <Analytics />
       </body>
