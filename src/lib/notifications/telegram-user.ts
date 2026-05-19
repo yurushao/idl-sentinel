@@ -7,6 +7,9 @@ import {
   recordNotificationDelivery
 } from './delivery'
 
+const NOTIFICATION_CHANGE_LIMIT = 250
+const MAX_DELIVERY_ATTEMPTS_PER_RUN = 500
+
 export interface TelegramUserConfig {
   userId: string
   walletAddress: string
@@ -161,11 +164,13 @@ export async function getUsersTelegramWatchingProgram(programId: string): Promis
 export async function sendTelegramWatchlistNotifications(): Promise<{
   sent: number
   failed: number
+  deferred: number
   errors: string[]
 }> {
   const result = {
     sent: 0,
     failed: 0,
+    deferred: 0,
     errors: [] as string[]
   }
 
@@ -183,6 +188,7 @@ export async function sendTelegramWatchlistNotifications(): Promise<{
       `)
       .eq('telegram_user_notified', false)
       .order('detected_at', { ascending: true })
+      .limit(NOTIFICATION_CHANGE_LIMIT)
 
     if (error) {
       result.errors.push(`Failed to fetch unnotified changes: ${error.message}`)
@@ -205,9 +211,17 @@ export async function sendTelegramWatchlistNotifications(): Promise<{
       changesByProgram.get(programDbId)!.push(change)
     }
 
+    let deliveryAttempts = 0
+    let deliveryBudgetExhausted = false
+
     // Send notifications for each program
     for (const [programDbId, programChanges] of changesByProgram) {
       try {
+        if (deliveryBudgetExhausted) {
+          result.deferred++
+          continue
+        }
+
         const programName = programChanges[0].monitored_programs.name
         const programId = programChanges[0].monitored_programs.program_id
 
@@ -239,6 +253,13 @@ export async function sendTelegramWatchlistNotifications(): Promise<{
             continue
           }
 
+          if (deliveryAttempts >= MAX_DELIVERY_ATTEMPTS_PER_RUN) {
+            deliveryBudgetExhausted = true
+            result.deferred++
+            break
+          }
+
+          deliveryAttempts++
           const message = formatTelegramMessage(programName, programId, pendingChanges)
           const success = await sendTelegramUserNotification(watcher, message)
           const pendingChangeIds = pendingChanges.map((change: any) => change.id)
@@ -293,6 +314,11 @@ export async function sendTelegramWatchlistNotifications(): Promise<{
 
         if (fullyDeliveredChangeIds.length > 0) {
           console.log(`Marked ${fullyDeliveredChangeIds.length} Telegram change(s) as fully notified for ${programName}`)
+        }
+
+        if (deliveryBudgetExhausted) {
+          console.log('Telegram notification delivery budget exhausted; remaining changes will be retried next run')
+          break
         }
 
         // Add delay between programs

@@ -7,6 +7,11 @@ import {
   recordNotificationDelivery
 } from './delivery'
 
+const NOTIFICATION_CHANGE_LIMIT = 250
+const PROGRAM_CONCURRENCY = 2
+const WATCHER_CONCURRENCY = 5
+const MAX_DELIVERY_ATTEMPTS_PER_RUN = 500
+
 export interface SlackWebhookConfig {
   webhookUrl: string
   userId: string
@@ -226,11 +231,13 @@ async function getBatchWatchers(programIds: string[]): Promise<Map<string, Slack
 export async function sendWatchlistNotifications(): Promise<{
   sent: number
   failed: number
+  deferred: number
   errors: string[]
 }> {
   const result = {
     sent: 0,
     failed: 0,
+    deferred: 0,
     errors: [] as string[]
   }
 
@@ -248,6 +255,7 @@ export async function sendWatchlistNotifications(): Promise<{
       `)
       .eq('slack_notified', false)
       .order('detected_at', { ascending: true })
+      .limit(NOTIFICATION_CHANGE_LIMIT)
 
     if (error) {
       result.errors.push(`Failed to fetch unnotified changes: ${error.message}`)
@@ -274,7 +282,10 @@ export async function sendWatchlistNotifications(): Promise<{
     const programDbIds = Array.from(changesByProgram.keys())
     const watchersByProgram = await getBatchWatchers(programDbIds)
 
-    const NOTIFICATION_CONCURRENCY = 5
+    const deliveryBudget = {
+      attempts: 0,
+      exhausted: false
+    }
 
     const processProgram = async (programDbId: string, programChanges: any[]) => {
       try {
@@ -296,8 +307,8 @@ export async function sendWatchlistNotifications(): Promise<{
           changeIds
         )
 
-        for (let i = 0; i < watchers.length; i += NOTIFICATION_CONCURRENCY) {
-          const batch = watchers.slice(i, i + NOTIFICATION_CONCURRENCY)
+        for (let i = 0; i < watchers.length; i += WATCHER_CONCURRENCY) {
+          const batch = watchers.slice(i, i + WATCHER_CONCURRENCY)
           const results = await Promise.allSettled(
             batch.map(async (watcher) => {
               const deliveredChangeIds = deliveredByUser.get(watcher.userId) || new Set<string>()
@@ -307,6 +318,15 @@ export async function sendWatchlistNotifications(): Promise<{
 
               if (pendingChanges.length === 0) {
                 return { watcher, pendingChangeIds: [] as string[], success: true, skipped: true }
+              }
+
+              if (deliveryBudget.exhausted) {
+                return { watcher, pendingChangeIds: [] as string[], success: false, skipped: true, deferred: true }
+              }
+
+              deliveryBudget.attempts++
+              if (deliveryBudget.attempts >= MAX_DELIVERY_ATTEMPTS_PER_RUN) {
+                deliveryBudget.exhausted = true
               }
 
               const message = formatSlackMessage(programName, programId, pendingChanges)
@@ -321,15 +341,18 @@ export async function sendWatchlistNotifications(): Promise<{
                 success ? undefined : 'Slack webhook send failed'
               )
 
-              return { watcher, pendingChangeIds, success, skipped: false }
+              return { watcher, pendingChangeIds, success, skipped: false, deferred: false }
             })
           )
 
           for (const promiseResult of results) {
             if (promiseResult.status === 'fulfilled') {
-              const { watcher, pendingChangeIds, success, skipped } = promiseResult.value
+              const { watcher, pendingChangeIds, success, skipped, deferred } = promiseResult.value
 
               if (skipped) {
+                if (deferred) {
+                  result.deferred++
+                }
                 continue
               }
 
@@ -354,6 +377,10 @@ export async function sendWatchlistNotifications(): Promise<{
               result.failed++
               result.errors.push(`Error sending Slack notification for ${programName}: ${errorMessage}`)
             }
+          }
+
+          if (deliveryBudget.exhausted) {
+            break
           }
         }
 
@@ -383,12 +410,22 @@ export async function sendWatchlistNotifications(): Promise<{
       }
     }
 
-    // Process all programs in parallel
-    await Promise.all(
-      Array.from(changesByProgram.entries()).map(([programDbId, programChanges]) =>
-        processProgram(programDbId, programChanges)
+    const programEntries = Array.from(changesByProgram.entries())
+    for (let i = 0; i < programEntries.length; i += PROGRAM_CONCURRENCY) {
+      const batch = programEntries.slice(i, i + PROGRAM_CONCURRENCY)
+      await Promise.all(
+        batch.map(([programDbId, programChanges]) =>
+          processProgram(programDbId, programChanges)
+        )
       )
-    )
+
+      if (deliveryBudget.exhausted) {
+        const remainingPrograms = programEntries.length - (i + batch.length)
+        result.deferred += Math.max(remainingPrograms, 0)
+        console.log('Slack notification delivery budget exhausted; remaining changes will be retried next run')
+        break
+      }
+    }
 
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : 'Unknown error'
