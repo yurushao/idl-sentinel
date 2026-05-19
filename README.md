@@ -1,67 +1,307 @@
 # IDL Sentinel
 
-Track modifications to Solana program IDLs in real-time and receive notifications when changes are detected.
+IDL Sentinel is a self-hostable Next.js app for watching Solana program IDLs.
+It fetches on-chain IDLs on a schedule, stores versioned snapshots, classifies
+structural changes, and sends alerts to users who watch the affected programs.
+An IDL, or Interface Definition Language, describes a program's public interface:
+the instructions clients can call, the accounts they pass, the custom types they
+decode, and the errors they may receive.
 
-## Features
+Use it when you depend on Solana programs and want to know when their public API
+surface changes: instructions, account layouts, custom types, errors, or the IDL
+itself.
 
-- **Real-time IDL Monitoring**: Automatically fetch and compare IDL changes from Solana programs
-- **Change Detection**: Intelligent analysis of instruction, type, account, and error changes
-- **Severity Classification**: Categorize changes by impact level (low, medium, high, critical)
-- **Multi-Channel Notifications**: Get alerts via Telegram and Slack
-- **Snapshot Inspection**: View and download full IDL snapshots
+IDL Sentinel is useful for protocol teams, integrators, wallet and indexer
+developers, auditors, and anyone else who wants a warning when a program's
+published interface changes.
+
+## What It Does
+
+- Monitors Anchor legacy IDL accounts and Solana Program Metadata IDL entries.
+- Stores every new IDL snapshot in Supabase.
+- Compares snapshots and records low, medium, high, or critical changes.
+- Alerts only users who have the changed program in their watchlist.
+- Supports Slack incoming webhooks and Telegram bot notifications.
+- Lets admins add programs directly.
+- Lets regular users activate a new shared program by paying a one-time USDC fee.
+
+## How It Works
+
+1. A program is added to `monitored_programs`.
+2. IDL Sentinel fetches its current on-chain IDL and stores the first snapshot.
+3. A cron job calls `/api/cron/monitor-idls`, usually every 15 minutes.
+4. The monitor fetches each active program IDL and hashes the normalized JSON.
+5. When the hash changes, IDL Sentinel creates a new snapshot and records the diff.
+6. Slack and Telegram notifications are sent to users watching that program.
+
+IDL Sentinel can only monitor programs with a discoverable on-chain IDL. Programs
+without an Anchor or Program Metadata IDL cannot be activated until they publish
+one.
 
 ## Quick Start
 
 ### Prerequisites
 
-- Node.js 18+ and pnpm
-- Supabase account and project
+- Node.js 20.9 or newer
+- pnpm
+- A Supabase project
+- A Solana wallet for signing in
+- A reliable Solana mainnet RPC URL for production monitoring
 
-### Installation
+### 1. Install
 
-1. **Clone and install dependencies**:
+```bash
+git clone <repository-url>
+cd idl-sentinel
+pnpm install
+```
 
-   ```bash
-   git clone <repository-url>
-   cd idl-sentinel
-   pnpm install
-   ```
+### 2. Configure Environment Variables
 
-2. **Set up environment variables**:
+```bash
+cp .env.example .env.local
+```
 
-   ```bash
-   cp .env.example .env.local
-   ```
+Fill in `.env.local`.
 
-   Fill in your environment variables in `.env.local`
+Minimum required for the app to boot and authenticate:
 
-3. **Set up the database**:
+| Variable                        | Purpose                                                      |
+| ------------------------------- | ------------------------------------------------------------ |
+| `NEXT_PUBLIC_SUPABASE_URL`      | Supabase project URL                                         |
+| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Supabase anon key used by browser/API RLS flows              |
+| `SUPABASE_SERVICE_ROLE_KEY`     | Server-side key for cron, monitoring, and system writes      |
+| `SOLANA_RPC_URL`                | Server-side RPC used by IDL fetches and payment verification |
+| `NEXT_PUBLIC_SOLANA_RPC_URL`    | Browser RPC used by wallet/payment flows                     |
+| `NEXT_PUBLIC_SOLANA_NETWORK`    | `mainnet-beta`, `devnet`, or `testnet`                       |
+| `JWT_SECRET`                    | Secret for signed wallet sessions                            |
+| `CRON_SECRET`                   | Bearer token required by the monitoring endpoint             |
+| `NEXT_PUBLIC_APP_URL`           | Public app URL, for example `http://localhost:3000` locally  |
 
-   See [supabase/README.md](supabase/README.md) for complete database setup instructions.
+Generate secrets with:
 
-4. **Run the development server**:
-   ```bash
-   pnpm dev
-   ```
+```bash
+openssl rand -hex 32
+```
 
-## User Roles & Permissions
+Required for non-admin program activation payments:
 
-### Admin Users
+| Variable                        | Purpose                                                       |
+| ------------------------------- | ------------------------------------------------------------- |
+| `PROGRAM_ACTIVATION_FEE_USDC`   | One-time fee regular users pay to add a new shared program    |
+| `SOLANA_USDC_MINT`              | USDC mint address, defaults to mainnet USDC in `.env.example` |
+| `PAYMENT_TREASURY_WALLET`       | Wallet that owns the treasury USDC account                    |
+| `PAYMENT_TREASURY_USDC_ACCOUNT` | Destination associated token account for USDC payments        |
 
-- **Add/Edit/Delete** monitored programs
-- Full access to all features
-- Set via SQL: `UPDATE users SET is_admin = true WHERE wallet_address = 'YOUR_WALLET'`
+Required for Telegram notifications:
 
-### Regular Users
+| Variable                | Purpose                  |
+| ----------------------- | ------------------------ |
+| `TELEGRAM_BOT_TOKEN`    | Bot token from BotFather |
+| `TELEGRAM_BOT_USERNAME` | Bot username without `@` |
 
-- **View** all monitored programs
-- **Subscribe** to programs of interest via watchlist
-- **Add** new programs through the self-serve 5 USDC activation flow
-- **Receive notifications** for watched programs only
-- Configure personal Slack/Telegram notification settings
-- Can edit/delete programs they activated
+Slack does not require a global app secret. Each user stores their own Slack
+incoming webhook URL in Settings.
+
+### 3. Create the Database
+
+1. Create a Supabase project.
+2. Open the Supabase SQL Editor.
+3. Copy all of [supabase/schema.sql](supabase/schema.sql) into the editor.
+4. Run the SQL.
+
+The schema creates the tables, indexes, triggers, functions, and Row Level
+Security policies used by the app.
+
+### 4. Run Locally
+
+```bash
+pnpm dev
+```
+
+Open `http://localhost:3000`.
+
+Connect a Solana wallet. The app will ask you to sign a message so it can create
+or verify your IDL Sentinel user session.
+
+### 5. Make Yourself an Admin
+
+After your first wallet sign-in creates a row in `users`, run this in the
+Supabase SQL Editor:
+
+```sql
+UPDATE users
+SET is_admin = true
+WHERE wallet_address = 'YOUR_WALLET_ADDRESS';
+```
+
+Refresh the app after updating the row. Admin users can add, edit, hide, and
+delete monitored programs without paying the activation fee.
+
+### 6. Add Your First Program
+
+As an admin:
+
+1. Go to Programs.
+2. Click Add Program.
+3. Paste a Solana program ID.
+4. Save the program.
+
+As a regular user:
+
+1. Go to Programs.
+2. Click Add Program.
+3. Preview the program IDL.
+4. If it is already monitored, add it to your watchlist for free.
+5. If it is new, approve the one-time USDC activation payment.
+
+New programs are added to the shared registry. Once a program is in the registry,
+any user can watch it for free.
+
+## Monitoring Cron
+
+The monitor endpoint is:
+
+```text
+GET /api/cron/monitor-idls
+Authorization: Bearer <CRON_SECRET>
+```
+
+For local testing:
+
+```bash
+curl http://localhost:3000/api/cron/monitor-idls \
+  -H "Authorization: Bearer $CRON_SECRET"
+```
+
+The repo includes [vercel.json](vercel.json), which schedules the endpoint every
+15 minutes on Vercel. If you deploy somewhere else, configure a scheduler that
+calls the same endpoint with the Authorization header.
+
+Each run:
+
+- fetches active program IDLs,
+- creates new snapshots when IDLs change,
+- records detected changes,
+- sends pending Slack and Telegram notifications,
+- cleans up expired Telegram connection tokens.
 
 ## Notifications
 
-- **Slack**: User-configurable webhook URLs
-- **Telegram**: Shared bot with per-user connections
+Notifications are watchlist-based. A user receives an alert only when:
+
+1. they are signed in,
+2. the program is in their watchlist,
+3. the notification channel is configured,
+4. the monitoring cron detects a new change for that program.
+
+### Slack
+
+Each user configures Slack from Settings by pasting an incoming webhook URL. The
+app accepts webhook URLs beginning with `https://hooks.slack.com/` and includes a
+test button.
+
+### Telegram
+
+1. Create a Telegram bot with BotFather.
+2. Set `TELEGRAM_BOT_TOKEN`, `TELEGRAM_BOT_USERNAME`, and `NEXT_PUBLIC_APP_URL`.
+3. Register the webhook:
+
+   ```bash
+   curl "https://api.telegram.org/bot$TELEGRAM_BOT_TOKEN/setWebhook" \
+     -d "url=$NEXT_PUBLIC_APP_URL/api/telegram/webhook"
+   ```
+
+4. In IDL Sentinel, go to Settings and click Connect Telegram.
+5. Open the generated Telegram link and press Start.
+
+Telegram connection links expire after 10 minutes.
+
+## User Roles
+
+### Admins
+
+- Add programs directly without payment.
+- Edit program names and descriptions.
+- Hide inactive programs from regular users.
+- Delete programs.
+- View all programs, including inactive ones.
+
+### Regular Users
+
+- View active monitored programs.
+- Add or remove programs from their watchlist.
+- Configure Slack and Telegram notifications.
+- Add a new shared program through the USDC activation flow.
+- Edit or delete programs they activated.
+
+## Change Severity
+
+IDL Sentinel assigns a severity to each detected change:
+
+| Severity   | Examples                                                     |
+| ---------- | ------------------------------------------------------------ |
+| `critical` | Instruction removed, signer requirement changed, IDL removed |
+| `high`     | Account/type removed, writable account requirement changed   |
+| `medium`   | Existing instruction/type/account/error modified             |
+| `low`      | New instruction, account, type, or error added               |
+
+## Useful Commands
+
+```bash
+pnpm dev
+pnpm build
+pnpm start
+pnpm lint
+pnpm type-check
+pnpm format:check
+```
+
+## Project Structure
+
+```text
+src/app/api/cron/monitor-idls/  Monitoring cron endpoint
+src/lib/solana/idl-fetcher.ts   On-chain IDL discovery and parsing
+src/lib/monitoring/             Snapshot comparison and change detection
+src/lib/notifications/          Slack and Telegram delivery
+src/lib/auth/                   Wallet signature auth and JWT sessions
+src/lib/db/                     Supabase data access helpers
+supabase/schema.sql             Database source of truth
+```
+
+## Troubleshooting
+
+### The app starts but shows no data
+
+Make sure the Supabase schema has been applied and `.env.local` points at the
+same Supabase project.
+
+### Wallet sign-in fails
+
+Check `JWT_SECRET`, browser wallet support for message signing, and the
+Supabase keys. The app creates the user during wallet verification.
+
+### A program cannot be activated
+
+Confirm the program has a public on-chain IDL. IDL Sentinel checks Anchor legacy
+IDL accounts and Solana Program Metadata IDL entries.
+
+### The cron endpoint returns 401
+
+The request must include:
+
+```text
+Authorization: Bearer <CRON_SECRET>
+```
+
+### No notifications are sent
+
+Check that the program is in the user's watchlist, the user configured Slack or
+Telegram, the cron endpoint is running, and there is at least one pending change
+for that watched program.
+
+### Payment activation fails
+
+Confirm `PAYMENT_TREASURY_USDC_ACCOUNT` is a valid USDC token account, the payer
+has a USDC token account with enough balance, and both client and server RPC URLs
+point to the intended Solana network.
