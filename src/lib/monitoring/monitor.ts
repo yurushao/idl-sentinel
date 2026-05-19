@@ -1,6 +1,7 @@
 import {
   createSolanaConnection,
   fetchIdlFromChain,
+  type SolanaIdl,
 } from "../solana/idl-fetcher";
 import { calculateIdlHash, generateUUID } from "../utils";
 import { getActivePrograms } from "../db/programs";
@@ -265,18 +266,26 @@ async function monitorProgram(
   snapshotCreated: boolean;
   changesDetected: number;
 }> {
+  // Get the latest snapshot for comparison
+  const latestSnapshot = await getLatestSnapshot(program.id);
+
   // Fetch current IDL from chain
-  const currentIdl = await fetchIdlFromChain(connection, program.program_id);
+  let currentIdl = await fetchIdlFromChain(connection, program.program_id);
 
   if (!currentIdl) {
-    throw new Error("Failed to fetch IDL from chain");
+    if (!latestSnapshot) {
+      throw new Error("No IDL found on chain and no prior snapshot exists");
+    }
+
+    currentIdl = await confirmMissingIdl(connection, program.program_id);
+
+    if (!currentIdl) {
+      return await recordMissingIdlChange(program, latestSnapshot);
+    }
   }
 
   // Calculate IDL hash
   const idlHash = calculateIdlHash(currentIdl);
-
-  // Get the latest snapshot for comparison
-  const latestSnapshot = await getLatestSnapshot(program.id);
 
   if (latestSnapshot?.idl_hash === idlHash) {
     console.log(`IDL unchanged for program ${program.name}`);
@@ -328,6 +337,92 @@ async function monitorProgram(
   return {
     snapshotCreated: true,
     changesDetected,
+  };
+}
+
+async function confirmMissingIdl(connection: any, programId: string): Promise<SolanaIdl | null> {
+  await new Promise((resolve) => setTimeout(resolve, 1000));
+
+  try {
+    return await fetchIdlFromChain(connection, programId, 2);
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : "Unknown error";
+    throw new Error(`Failed to confirm missing IDL: ${errorMessage}`);
+  }
+}
+
+async function recordMissingIdlChange(
+  program: any,
+  latestSnapshot: any
+): Promise<{
+  snapshotCreated: boolean;
+  changesDetected: number;
+}> {
+  const missingIdl = createMissingIdl(program, latestSnapshot.idl_content);
+  const missingHash = calculateIdlHash(missingIdl);
+
+  if (latestSnapshot.idl_hash === missingHash) {
+    console.log(`IDL still missing for program ${program.name}`);
+    return {
+      snapshotCreated: false,
+      changesDetected: 0,
+    };
+  }
+
+  const { snapshot: missingSnapshot, created } = await createSnapshotIfNotExists(
+    program.id,
+    missingHash,
+    missingIdl
+  );
+
+  if (!created) {
+    console.log(`Missing-IDL snapshot already existed for program ${program.name}`);
+    return {
+      snapshotCreated: false,
+      changesDetected: 0,
+    };
+  }
+
+  await createChanges(program.id, latestSnapshot.id, missingSnapshot.id, [
+    {
+      changeType: "idl_removed",
+      changeSummary: `IDL for '${program.name}' is no longer available on chain`,
+      changeDetails: {
+        changeType: "idl_removed",
+        itemName: program.name,
+        oldValue: latestSnapshot.idl_content,
+        newValue: missingIdl,
+        description: "On-chain IDL was not found after a confirmation fetch",
+      },
+      severity: "critical",
+    },
+  ]);
+
+  return {
+    snapshotCreated: true,
+    changesDetected: 1,
+  };
+}
+
+function createMissingIdl(program: any, previousIdl: any): SolanaIdl {
+  const name =
+    previousIdl?.name ||
+    previousIdl?.metadata?.name ||
+    program.name ||
+    program.program_id;
+
+  return {
+    name,
+    address: program.program_id,
+    instructions: [],
+    accounts: [],
+    types: [],
+    errors: [],
+    metadata: {
+      name,
+      address: program.program_id,
+      idl_sentinel_status: "missing",
+    },
   };
 }
 

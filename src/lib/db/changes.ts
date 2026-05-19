@@ -13,6 +13,7 @@ export type ChangeType =
   | 'error_added'
   | 'error_removed'
   | 'error_modified'
+  | 'idl_removed'
 
 export type ChangeSeverity = 'low' | 'medium' | 'high' | 'critical'
 
@@ -213,7 +214,8 @@ export async function getChangeStatistics(): Promise<{
         account_modified: 0,
         error_added: 0,
         error_removed: 0,
-        error_modified: 0
+        error_modified: 0,
+        idl_removed: 0
       },
       recent24h: 0
     }
@@ -237,7 +239,8 @@ export async function getChangeStatistics(): Promise<{
       account_modified: 0,
       error_added: 0,
       error_removed: 0,
-      error_modified: 0
+      error_modified: 0,
+      idl_removed: 0
     },
     recent24h: result.recent_24h_count || 0
   }

@@ -27,6 +27,7 @@ interface ChangeStatistics {
     error_added: number;
     error_removed: number;
     error_modified: number;
+    idl_removed: number;
   };
   recent24h: number;
 }
