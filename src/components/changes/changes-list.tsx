@@ -1,91 +1,106 @@
-'use client'
+"use client";
 
-import { useState, useMemo, useEffect } from 'react'
-import { Card, CardContent } from '@/components/ui/card'
-import { Badge } from '@/components/ui/badge'
-import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
-import { formatRelativeTime, severityDotColors, severityBadgeColors, truncateString } from '@/lib/utils'
-import { Search, Filter, ChevronDown, ChevronUp } from 'lucide-react'
-import { ChangeDetails } from './change-details'
-import { useChanges } from '@/hooks/use-changes'
+import { useState, useMemo, useEffect } from "react";
+import Link from "next/link";
+import { Card, CardContent } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import {
+  formatRelativeTime,
+  severityDotColors,
+  severityBadgeColors,
+  truncateString,
+} from "@/lib/utils";
+import { Search, Filter, ChevronDown, ChevronUp } from "lucide-react";
+import { ChangeDetails } from "./change-details";
+import { useChanges } from "@/hooks/use-changes";
 
-export function ChangesList() {
-  const { data, isLoading } = useChanges(100)
-  const changes = data?.changes || []
+interface ChangesListProps {
+  programId?: string;
+}
 
-  const [searchTerm, setSearchTerm] = useState('')
-  const [debouncedSearchTerm, setDebouncedSearchTerm] = useState('')
-  const [severityFilter, setSeverityFilter] = useState<string>('all')
-  const [programFilter, setProgramFilter] = useState<string>('all')
-  const [expandedChanges, setExpandedChanges] = useState<Set<string>>(new Set())
+export function ChangesList({ programId }: ChangesListProps) {
+  const { data, isLoading } = useChanges(100, programId);
+  const changes = useMemo(() => data?.changes ?? [], [data?.changes]);
+
+  const [searchTerm, setSearchTerm] = useState("");
+  const [debouncedSearchTerm, setDebouncedSearchTerm] = useState("");
+  const [severityFilter, setSeverityFilter] = useState<string>("all");
+  const [programFilter, setProgramFilter] = useState<string>("all");
+  const [expandedChanges, setExpandedChanges] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     const handler = setTimeout(() => {
-      setDebouncedSearchTerm(searchTerm)
-    }, 300)
-    return () => clearTimeout(handler)
-  }, [searchTerm])
+      setDebouncedSearchTerm(searchTerm);
+    }, 300);
+    return () => clearTimeout(handler);
+  }, [searchTerm]);
 
   const filteredChanges = useMemo(() => {
-    let filtered = changes
+    let filtered = changes;
 
     if (debouncedSearchTerm.trim()) {
-      filtered = filtered.filter(change =>
-        change.change_summary.toLowerCase().includes(debouncedSearchTerm.toLowerCase()) ||
-        change.change_type.toLowerCase().includes(debouncedSearchTerm.toLowerCase()) ||
-        change.program_id.toLowerCase().includes(debouncedSearchTerm.toLowerCase()) ||
-        (change.monitored_programs?.name &&
-         change.monitored_programs.name.toLowerCase().includes(debouncedSearchTerm.toLowerCase()))
-      )
+      filtered = filtered.filter(
+        (change) =>
+          (change.monitored_programs?.program_id &&
+            change.monitored_programs.program_id
+              .toLowerCase()
+              .includes(debouncedSearchTerm.toLowerCase())) ||
+          change.change_summary.toLowerCase().includes(debouncedSearchTerm.toLowerCase()) ||
+          change.change_type.toLowerCase().includes(debouncedSearchTerm.toLowerCase()) ||
+          change.program_id.toLowerCase().includes(debouncedSearchTerm.toLowerCase()) ||
+          (change.monitored_programs?.name &&
+            change.monitored_programs.name
+              .toLowerCase()
+              .includes(debouncedSearchTerm.toLowerCase()))
+      );
     }
 
-    if (severityFilter !== 'all') {
-      filtered = filtered.filter(change => change.severity === severityFilter)
+    if (severityFilter !== "all") {
+      filtered = filtered.filter((change) => change.severity === severityFilter);
     }
 
-    if (programFilter !== 'all') {
-      filtered = filtered.filter(change =>
-        change.monitored_programs?.name === programFilter
-      )
+    if (programFilter !== "all") {
+      filtered = filtered.filter((change) => change.monitored_programs?.name === programFilter);
     }
 
-    return filtered
-  }, [debouncedSearchTerm, severityFilter, programFilter, changes])
+    return filtered;
+  }, [debouncedSearchTerm, severityFilter, programFilter, changes]);
 
   const toggleExpanded = (changeId: string) => {
-    const newExpanded = new Set(expandedChanges)
+    const newExpanded = new Set(expandedChanges);
     if (newExpanded.has(changeId)) {
-      newExpanded.delete(changeId)
+      newExpanded.delete(changeId);
     } else {
-      newExpanded.add(changeId)
+      newExpanded.add(changeId);
     }
-    setExpandedChanges(newExpanded)
-  }
+    setExpandedChanges(newExpanded);
+  };
 
   const severityOptions = [
-    { value: 'all', label: 'All Severities' },
-    { value: 'low', label: 'Low' },
-    { value: 'medium', label: 'Medium' },
-    { value: 'high', label: 'High' },
-    { value: 'critical', label: 'Critical' },
-  ]
+    { value: "all", label: "All Severities" },
+    { value: "low", label: "Low" },
+    { value: "medium", label: "Medium" },
+    { value: "high", label: "High" },
+    { value: "critical", label: "Critical" },
+  ];
 
   // Get unique program names
   const programOptions = [
-    { value: 'all', label: 'All Programs' },
-    ...Array.from(new Set(changes.map(change => change.monitored_programs?.name).filter(Boolean)))
-      .map(name => ({ value: name as string, label: name as string }))
-      .sort((a, b) => a.label.localeCompare(b.label))
-  ]
+    { value: "all", label: "All Programs" },
+    ...Array.from(new Set(changes.map((change) => change.monitored_programs?.name).filter(Boolean)))
+      .map((name) => ({ value: name as string, label: name as string }))
+      .sort((a, b) => a.label.localeCompare(b.label)),
+  ];
 
   if (isLoading) {
     return (
       <div className="space-y-6">
-        <div className="flex justify-between items-center">
+        <div className="flex items-center justify-between">
           <div className="flex items-center space-x-4">
-            <div className="h-10 w-64 bg-muted rounded-sm animate-pulse" />
-            <div className="h-10 w-32 bg-muted rounded-sm animate-pulse" />
+            <div className="h-10 w-64 animate-pulse rounded-sm bg-muted" />
+            <div className="h-10 w-32 animate-pulse rounded-sm bg-muted" />
           </div>
         </div>
 
@@ -94,40 +109,40 @@ export function ChangesList() {
             <Card key={i}>
               <CardContent className="p-6">
                 <div className="space-y-3">
-                  <div className="h-6 bg-muted rounded-sm animate-pulse" />
-                  <div className="h-4 bg-muted rounded-sm w-2/3 animate-pulse" />
-                  <div className="h-4 bg-muted rounded-sm w-1/2 animate-pulse" />
+                  <div className="h-6 animate-pulse rounded-sm bg-muted" />
+                  <div className="h-4 w-2/3 animate-pulse rounded-sm bg-muted" />
+                  <div className="h-4 w-1/2 animate-pulse rounded-sm bg-muted" />
                 </div>
               </CardContent>
             </Card>
           ))}
         </div>
       </div>
-    )
+    );
   }
 
   return (
     <div className="space-y-6">
       <div className="flex flex-col gap-4">
-        <div className="flex flex-col sm:flex-row gap-3">
+        <div className="flex flex-col gap-3 sm:flex-row">
           <div className="relative flex-1">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
+            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 transform text-muted-foreground" />
             <Input
               placeholder="Search changes..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="pl-10 w-full"
+              className="w-full pl-10"
             />
           </div>
 
           <div className="relative flex-1 sm:flex-initial">
-            <Filter className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
+            <Filter className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 transform text-muted-foreground" />
             <select
               value={severityFilter}
               onChange={(e) => setSeverityFilter(e.target.value)}
-              className="pl-10 pr-4 py-2 border border-input bg-background rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-ring w-full sm:w-auto"
+              className="w-full rounded-md border border-input bg-background py-2 pl-10 pr-4 text-sm focus:outline-none focus:ring-2 focus:ring-ring sm:w-auto"
             >
-              {severityOptions.map(option => (
+              {severityOptions.map((option) => (
                 <option key={option.value} value={option.value}>
                   {option.label}
                 </option>
@@ -136,13 +151,13 @@ export function ChangesList() {
           </div>
 
           <div className="relative flex-1 sm:flex-initial">
-            <Filter className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
+            <Filter className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 transform text-muted-foreground" />
             <select
               value={programFilter}
               onChange={(e) => setProgramFilter(e.target.value)}
-              className="pl-10 pr-4 py-2 border border-input bg-background rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-ring w-full sm:w-auto"
+              className="w-full rounded-md border border-input bg-background py-2 pl-10 pr-4 text-sm focus:outline-none focus:ring-2 focus:ring-ring sm:w-auto"
             >
-              {programOptions.map(option => (
+              {programOptions.map((option) => (
                 <option key={option.value} value={option.value}>
                   {option.label}
                 </option>
@@ -154,6 +169,18 @@ export function ChangesList() {
         <div className="text-sm text-muted-foreground">
           {filteredChanges.length} of {changes.length} changes
         </div>
+
+        {programId && (
+          <div className="flex flex-col gap-2 rounded-md border border-border bg-muted/30 p-3 text-sm sm:flex-row sm:items-center sm:justify-between">
+            <div className="min-w-0">
+              <span className="text-muted-foreground">Program filter: </span>
+              <span className="break-all font-mono">{programId}</span>
+            </div>
+            <Button variant="outline" size="sm" asChild>
+              <Link href="/changes">Clear</Link>
+            </Button>
+          </div>
+        )}
       </div>
 
       {filteredChanges.length === 0 ? (
@@ -161,17 +188,17 @@ export function ChangesList() {
           <CardContent className="p-12 text-center">
             {changes.length === 0 ? (
               <div>
-                <h3 className="text-lg font-medium mb-2">No changes detected yet</h3>
+                <h3 className="mb-2 text-lg font-medium">No changes detected yet</h3>
                 <p className="text-muted-foreground">
-                  IDL changes will appear here once your programs are monitored
+                  {programId
+                    ? "IDL changes for this program will appear here once detected"
+                    : "IDL changes will appear here once your programs are monitored"}
                 </p>
               </div>
             ) : (
               <div>
-                <h3 className="text-lg font-medium mb-2">No changes found</h3>
-                <p className="text-muted-foreground">
-                  Try adjusting your search terms or filters
-                </p>
+                <h3 className="mb-2 text-lg font-medium">No changes found</h3>
+                <p className="text-muted-foreground">Try adjusting your search terms or filters</p>
               </div>
             )}
           </CardContent>
@@ -179,37 +206,38 @@ export function ChangesList() {
       ) : (
         <div className="space-y-4">
           {filteredChanges.map((change) => {
-            const isExpanded = expandedChanges.has(change.id)
+            const isExpanded = expandedChanges.has(change.id);
+            const programAddress = change.monitored_programs?.program_id || change.program_id;
 
             return (
               <Card key={change.id}>
                 <CardContent className="p-4 sm:p-6">
                   <div className="flex items-start gap-3 sm:gap-4">
                     <div
-                      className={`h-4 w-4 rounded-sm mt-1 flex-shrink-0 ${
-                        severityDotColors[change.severity] || 'bg-gray-500'
+                      className={`mt-1 h-4 w-4 flex-shrink-0 rounded-sm ${
+                        severityDotColors[change.severity] || "bg-gray-500"
                       }`}
                     />
 
-                    <div className="flex-1 min-w-0">
-                      <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-2 mb-2">
+                    <div className="min-w-0 flex-1">
+                      <div className="mb-2 flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
                         <div className="flex flex-wrap items-center gap-2">
                           <h3 className="font-semibold">
-                            {change.monitored_programs?.name || 'Unknown Program'}
+                            {change.monitored_programs?.name || "Unknown Program"}
                           </h3>
                           <Badge variant="outline" className="text-xs">
                             {change.change_type}
                           </Badge>
                           <Badge
                             className={`text-xs ${
-                              severityBadgeColors[change.severity] || 'bg-gray-500 text-white'
+                              severityBadgeColors[change.severity] || "bg-gray-500 text-white"
                             }`}
                           >
                             {change.severity}
                           </Badge>
                         </div>
                         <div className="flex items-center gap-2">
-                          <span className="text-sm text-muted-foreground whitespace-nowrap">
+                          <span className="whitespace-nowrap text-sm text-muted-foreground">
                             {formatRelativeTime(change.detected_at)}
                           </span>
                           <Button
@@ -227,17 +255,15 @@ export function ChangesList() {
                         </div>
                       </div>
 
-                      <p className="text-sm text-muted-foreground mb-2">
-                        {change.change_summary}
-                      </p>
+                      <p className="mb-2 text-sm text-muted-foreground">{change.change_summary}</p>
 
-                      <p className="text-xs text-muted-foreground font-mono break-all">
-                        {truncateString(change.program_id, 40)}
+                      <p className="break-all font-mono text-xs text-muted-foreground">
+                        {truncateString(programAddress, 40)}
                       </p>
 
                       {isExpanded && change.change_details && (
-                        <div className="mt-4 p-3 sm:p-4 bg-muted/50 rounded-md overflow-auto">
-                          <h4 className="font-medium mb-3 text-sm">Change Details</h4>
+                        <div className="mt-4 overflow-auto rounded-md bg-muted/50 p-3 sm:p-4">
+                          <h4 className="mb-3 text-sm font-medium">Change Details</h4>
                           <ChangeDetails details={change.change_details} />
                         </div>
                       )}
@@ -245,10 +271,10 @@ export function ChangesList() {
                   </div>
                 </CardContent>
               </Card>
-            )
+            );
           })}
         </div>
       )}
     </div>
-  )
+  );
 }

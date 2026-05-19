@@ -32,27 +32,37 @@ interface ChangeStatistics {
   recent24h: number;
 }
 
-export function ChangeSummary() {
+interface ChangeSummaryProps {
+  programId?: string;
+}
+
+export function ChangeSummary({ programId }: ChangeSummaryProps) {
   const [stats, setStats] = useState<ChangeStatistics | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    fetchStatistics();
-  }, []);
+    const fetchStatistics = async () => {
+      try {
+        setLoading(true);
+        const params = new URLSearchParams({ stats: "true" });
+        if (programId) {
+          params.set("programId", programId);
+        }
 
-  const fetchStatistics = async () => {
-    try {
-      const response = await fetch("/api/changes?stats=true");
-      if (response.ok) {
-        const data = await response.json();
-        setStats(data.statistics);
+        const response = await fetch(`/api/changes?${params.toString()}`);
+        if (response.ok) {
+          const data = await response.json();
+          setStats(data.statistics);
+        }
+      } catch (error) {
+        console.error("Error fetching statistics:", error);
+      } finally {
+        setLoading(false);
       }
-    } catch (error) {
-      console.error("Error fetching statistics:", error);
-    } finally {
-      setLoading(false);
-    }
-  };
+    };
+
+    fetchStatistics();
+  }, [programId]);
 
   if (loading) {
     return (
@@ -60,11 +70,11 @@ export function ChangeSummary() {
         {[...Array(4)].map((_, i) => (
           <Card key={i}>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <div className="h-4 w-24 bg-muted rounded-sm animate-pulse" />
+              <div className="h-4 w-24 animate-pulse rounded-sm bg-muted" />
             </CardHeader>
             <CardContent>
-              <div className="h-8 w-16 bg-muted rounded-sm animate-pulse mb-2" />
-              <div className="h-3 w-32 bg-muted rounded-sm animate-pulse" />
+              <div className="mb-2 h-8 w-16 animate-pulse rounded-sm bg-muted" />
+              <div className="h-3 w-32 animate-pulse rounded-sm bg-muted" />
             </CardContent>
           </Card>
         ))}
@@ -93,7 +103,7 @@ export function ChangeSummary() {
           <CardContent>
             <div className="text-2xl font-bold">{stats.total}</div>
             <p className="text-xs text-muted-foreground">
-              All detected IDL changes
+              {programId ? "For selected program" : "All detected IDL changes"}
             </p>
           </CardContent>
         </Card>
@@ -146,14 +156,12 @@ export function ChangeSummary() {
           <CardContent>
             <div className="space-y-3">
               {Object.entries(stats.bySeverity).map(([severity, count]) => (
-                <div
-                  key={severity}
-                  className="flex items-center justify-between"
-                >
+                <div key={severity} className="flex items-center justify-between">
                   <div className="flex items-center space-x-3">
                     <div
                       className={`h-3 w-3 rounded-sm ${
-                        severityDotColors[severity as keyof typeof severityDotColors] || 'bg-gray-500'
+                        severityDotColors[severity as keyof typeof severityDotColors] ||
+                        "bg-gray-500"
                       }`}
                     />
                     <span className="text-sm capitalize">{severity}</span>
@@ -197,9 +205,7 @@ export function ChangeSummary() {
                 ))}
               </div>
             ) : (
-              <p className="text-sm text-muted-foreground">
-                No changes detected yet
-              </p>
+              <p className="text-sm text-muted-foreground">No changes detected yet</p>
             )}
           </CardContent>
         </Card>
