@@ -6,8 +6,7 @@ import { calculateIdlHash, generateUUID } from "../utils";
 import { getActivePrograms } from "../db/programs";
 import {
   getLatestSnapshot,
-  snapshotExists,
-  createSnapshot,
+  createSnapshotIfNotExists,
 } from "../db/snapshots";
 import { createChanges } from "../db/changes";
 import { detectChanges } from "./change-detector";
@@ -72,20 +71,23 @@ export async function fetchInitialIdl(
     // Calculate IDL hash
     const idlHash = calculateIdlHash(currentIdl);
 
-    // Create initial snapshot (there shouldn't be any existing snapshots)
-    const newSnapshot = await createSnapshot(program.id, idlHash, currentIdl);
-    console.log(`Created initial snapshot for program ${program.name}`);
+    const snapshotResult = await createSnapshotIfNotExists(program.id, idlHash, currentIdl);
+    console.log(
+      `${snapshotResult.created ? "Created" : "Reused"} initial snapshot for program ${program.name}`
+    );
 
     await logMonitoringEvent(
       runId,
       program.id,
       "info",
-      "Initial IDL snapshot created successfully"
+      snapshotResult.created
+        ? "Initial IDL snapshot created successfully"
+        : "Initial IDL snapshot already existed"
     );
 
     return {
       success: true,
-      snapshotCreated: true,
+      snapshotCreated: snapshotResult.created,
       idlFound: true,
     };
   } catch (error) {
@@ -273,10 +275,10 @@ async function monitorProgram(
   // Calculate IDL hash
   const idlHash = calculateIdlHash(currentIdl);
 
-  // Check if we already have this snapshot
-  const exists = await snapshotExists(program.id, idlHash);
+  // Get the latest snapshot for comparison
+  const latestSnapshot = await getLatestSnapshot(program.id);
 
-  if (exists) {
+  if (latestSnapshot?.idl_hash === idlHash) {
     console.log(`IDL unchanged for program ${program.name}`);
     return {
       snapshotCreated: false,
@@ -284,11 +286,21 @@ async function monitorProgram(
     };
   }
 
-  // Get the latest snapshot for comparison
-  const latestSnapshot = await getLatestSnapshot(program.id);
-
   // Create new snapshot
-  const newSnapshot = await createSnapshot(program.id, idlHash, currentIdl);
+  const { snapshot: newSnapshot, created } = await createSnapshotIfNotExists(
+    program.id,
+    idlHash,
+    currentIdl
+  );
+
+  if (!created) {
+    console.log(`IDL snapshot already existed for program ${program.name}`);
+    return {
+      snapshotCreated: false,
+      changesDetected: 0,
+    };
+  }
+
   console.log(`Created new snapshot for program ${program.name}`);
 
   // Detect changes

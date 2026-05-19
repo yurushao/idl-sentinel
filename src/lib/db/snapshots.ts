@@ -1,6 +1,11 @@
 import { supabaseAdmin, type IdlSnapshot } from '../supabase'
 import type { SolanaIdl } from '../solana/idl-fetcher'
 
+export interface SnapshotInsertResult {
+  snapshot: IdlSnapshot
+  created: boolean
+}
+
 /**
  * Get the latest snapshot for a program
  */
@@ -43,6 +48,23 @@ export async function snapshotExists(programId: string, idlHash: string): Promis
   return (data?.length || 0) > 0
 }
 
+async function getSnapshotByHash(programId: string, idlHash: string): Promise<IdlSnapshot | null> {
+  const { data, error } = await supabaseAdmin
+    .from('idl_snapshots')
+    .select('*')
+    .eq('program_id', programId)
+    .eq('idl_hash', idlHash)
+    .limit(1)
+    .maybeSingle()
+
+  if (error) {
+    console.error('Error fetching snapshot by hash:', error)
+    throw new Error(`Failed to fetch snapshot by hash: ${error.message}`)
+  }
+
+  return data
+}
+
 /**
  * Create a new IDL snapshot
  */
@@ -51,14 +73,31 @@ export async function createSnapshot(
   idlHash: string,
   idlContent: SolanaIdl
 ): Promise<IdlSnapshot> {
+  const result = await createSnapshotIfNotExists(programId, idlHash, idlContent)
+  return result.snapshot
+}
+
+/**
+ * Create a snapshot, returning an existing row if another worker won the insert race.
+ */
+export async function createSnapshotIfNotExists(
+  programId: string,
+  idlHash: string,
+  idlContent: SolanaIdl
+): Promise<SnapshotInsertResult> {
   // Get the next version number
-  const { data: latestSnapshot } = await supabaseAdmin
+  const { data: latestSnapshot, error: latestError } = await supabaseAdmin
     .from('idl_snapshots')
     .select('version_number')
     .eq('program_id', programId)
     .order('version_number', { ascending: false })
     .limit(1)
-    .single()
+    .maybeSingle()
+
+  if (latestError) {
+    console.error('Error fetching latest snapshot version:', latestError)
+    throw new Error(`Failed to fetch latest snapshot version: ${latestError.message}`)
+  }
 
   const nextVersion = (latestSnapshot?.version_number || 0) + 1
 
@@ -74,11 +113,18 @@ export async function createSnapshot(
     .single()
 
   if (error) {
+    if (error.code === '23505') {
+      const existingSnapshot = await getSnapshotByHash(programId, idlHash)
+      if (existingSnapshot) {
+        return { snapshot: existingSnapshot, created: false }
+      }
+    }
+
     console.error('Error creating snapshot:', error)
     throw new Error(`Failed to create snapshot: ${error.message}`)
   }
 
-  return data
+  return { snapshot: data, created: true }
 }
 
 /**

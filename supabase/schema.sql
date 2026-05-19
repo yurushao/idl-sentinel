@@ -266,6 +266,25 @@ CREATE INDEX IF NOT EXISTS idx_monitoring_logs_program_created ON monitoring_log
 COMMENT ON TABLE monitoring_logs IS 'System logs for debugging and monitoring cron jobs';
 
 -- =====================================================
+-- CRON LOCKS TABLE
+-- =====================================================
+-- Prevent overlapping scheduler runs
+CREATE TABLE IF NOT EXISTS cron_locks (
+    lock_name TEXT PRIMARY KEY,
+    run_id UUID NOT NULL,
+    locked_until TIMESTAMPTZ NOT NULL,
+    acquired_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- Indexes for cron_locks table
+CREATE INDEX IF NOT EXISTS idx_cron_locks_locked_until ON cron_locks(locked_until);
+
+-- Comments
+COMMENT ON TABLE cron_locks IS 'Database-backed locks for singleton cron jobs';
+COMMENT ON COLUMN cron_locks.locked_until IS 'Timestamp after which another run may steal the lock';
+
+-- =====================================================
 -- CUSTOM FUNCTIONS
 -- =====================================================
 
@@ -312,6 +331,43 @@ BEGIN
     OFFSET p_offset;
 END;
 $$ LANGUAGE plpgsql STABLE;
+
+-- Function to atomically acquire a cron lock if it is absent or expired
+CREATE OR REPLACE FUNCTION try_acquire_cron_lock(
+    p_lock_name TEXT,
+    p_run_id UUID,
+    p_locked_until TIMESTAMPTZ
+)
+RETURNS BOOLEAN AS $$
+BEGIN
+    INSERT INTO cron_locks (lock_name, run_id, locked_until, acquired_at, updated_at)
+    VALUES (p_lock_name, p_run_id, p_locked_until, NOW(), NOW())
+    ON CONFLICT (lock_name) DO UPDATE
+    SET
+        run_id = EXCLUDED.run_id,
+        locked_until = EXCLUDED.locked_until,
+        acquired_at = NOW(),
+        updated_at = NOW()
+    WHERE cron_locks.locked_until <= NOW();
+
+    RETURN FOUND;
+END;
+$$ LANGUAGE plpgsql;
+
+-- Function to release a cron lock only if the caller still owns it
+CREATE OR REPLACE FUNCTION release_cron_lock(
+    p_lock_name TEXT,
+    p_run_id UUID
+)
+RETURNS BOOLEAN AS $$
+BEGIN
+    DELETE FROM cron_locks
+    WHERE lock_name = p_lock_name
+    AND run_id = p_run_id;
+
+    RETURN FOUND;
+END;
+$$ LANGUAGE plpgsql;
 
 -- Function to get change statistics with aggregation
 -- Optimized to avoid fetching all rows and counting in memory
@@ -406,6 +462,13 @@ CREATE TRIGGER update_notification_deliveries_updated_at
     FOR EACH ROW
     EXECUTE FUNCTION update_updated_at_column();
 
+-- Apply trigger to cron_locks
+DROP TRIGGER IF EXISTS update_cron_locks_updated_at ON cron_locks;
+CREATE TRIGGER update_cron_locks_updated_at
+    BEFORE UPDATE ON cron_locks
+    FOR EACH ROW
+    EXECUTE FUNCTION update_updated_at_column();
+
 -- =====================================================
 -- ROW LEVEL SECURITY (RLS) POLICIES
 -- =====================================================
@@ -420,6 +483,7 @@ ALTER TABLE user_watchlist ENABLE ROW LEVEL SECURITY;
 ALTER TABLE program_activation_payments ENABLE ROW LEVEL SECURITY;
 ALTER TABLE telegram_connection_tokens ENABLE ROW LEVEL SECURITY;
 ALTER TABLE monitoring_logs ENABLE ROW LEVEL SECURITY;
+ALTER TABLE cron_locks ENABLE ROW LEVEL SECURITY;
 
 -- =====================================================
 -- USERS TABLE POLICIES
@@ -577,6 +641,16 @@ CREATE POLICY "Enable write access for all users" ON monitoring_logs
     FOR ALL USING (true);
 
 -- =====================================================
+-- CRON LOCKS TABLE POLICIES
+-- =====================================================
+DROP POLICY IF EXISTS "Service role full access" ON cron_locks;
+
+-- Cron locks are maintained only by server-side scheduler jobs.
+CREATE POLICY "Service role full access" ON cron_locks
+    FOR ALL
+    USING (auth.role() = 'service_role');
+
+-- =====================================================
 -- GRANT PERMISSIONS
 -- =====================================================
 -- Grant permissions to anon and authenticated roles
@@ -590,6 +664,7 @@ GRANT ALL PRIVILEGES ON user_watchlist TO anon, authenticated;
 GRANT ALL PRIVILEGES ON program_activation_payments TO anon, authenticated;
 GRANT ALL PRIVILEGES ON telegram_connection_tokens TO anon, authenticated;
 GRANT ALL PRIVILEGES ON monitoring_logs TO anon, authenticated;
+GRANT ALL PRIVILEGES ON cron_locks TO anon, authenticated;
 
 -- =====================================================
 -- SETUP COMPLETE

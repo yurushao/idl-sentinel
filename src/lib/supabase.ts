@@ -74,6 +74,14 @@ export interface MonitoringLog {
   created_at: string;
 }
 
+export interface CronLock {
+  lock_name: string;
+  run_id: string;
+  locked_until: string;
+  acquired_at: string;
+  updated_at: string;
+}
+
 export interface User {
   id: string;
   wallet_address: string;
