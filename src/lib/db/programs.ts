@@ -144,38 +144,99 @@ export async function deleteProgram(id: string): Promise<void> {
 }
 
 /**
- * Get all programs (including inactive ones)
- * Optimized: Uses a single query with lateral join to avoid N+1 queries
+ * Get programs with their latest monitoring timestamp.
  */
 export async function getAllPrograms(options?: {
   limit?: number
   offset?: number
+  activeOnly?: boolean
 }): Promise<MonitoredProgram[]> {
   const limit = options?.limit
   const offset = options?.offset || 0
 
-  // Use raw SQL with lateral join for optimal performance
-  // This fetches all programs and their latest monitoring log in a single query
-  const { data, error } = await supabaseAdmin.rpc('get_all_programs_with_last_check', {
-    p_limit: limit || null,
-    p_offset: offset
-  })
+  if (!options?.activeOnly || (!limit && offset === 0)) {
+    const { data, error } = await supabaseAdmin.rpc('get_all_programs_with_last_check', {
+      p_limit: limit || null,
+      p_offset: offset
+    })
+
+    if (error) {
+      console.error('Error fetching all programs:', error)
+      throw new Error(`Failed to fetch programs: ${error.message}`)
+    }
+
+    const programs = (data || []) as MonitoredProgram[]
+    return options?.activeOnly
+      ? programs.filter((program) => program.is_active)
+      : programs
+  }
+
+  let query = supabaseAdmin
+    .from('monitored_programs')
+    .select('*')
+    .order('created_at', { ascending: false })
+
+  if (options?.activeOnly) {
+    query = query.eq('is_active', true)
+  }
+
+  if (limit) {
+    query = query.range(offset, offset + limit - 1)
+  } else if (offset > 0) {
+    query = query.range(offset, offset + 999_999)
+  }
+
+  const { data, error } = await query
 
   if (error) {
     console.error('Error fetching all programs:', error)
     throw new Error(`Failed to fetch programs: ${error.message}`)
   }
 
-  return data || []
+  const programs = data || []
+  if (programs.length === 0) {
+    return []
+  }
+
+  const { data: logs, error: logsError } = await supabaseAdmin
+    .from('monitoring_logs')
+    .select('program_id, created_at')
+    .in('program_id', programs.map((program) => program.id))
+    .order('created_at', { ascending: false })
+
+  if (logsError) {
+    console.error('Error fetching latest monitoring logs:', logsError)
+    throw new Error(`Failed to fetch latest monitoring logs: ${logsError.message}`)
+  }
+
+  const lastCheckedByProgram = new Map<string, string>()
+  for (const log of logs || []) {
+    if (!lastCheckedByProgram.has(log.program_id)) {
+      lastCheckedByProgram.set(log.program_id, log.created_at)
+    }
+  }
+
+  return programs.map((program) => ({
+    ...program,
+    last_checked_at: lastCheckedByProgram.get(program.id) || null
+  }))
 }
 
 /**
  * Get total count of programs
  */
-export async function getProgramCount(): Promise<number> {
-  const { count, error } = await supabaseAdmin
+export async function getProgramCount(options?: {
+  activeOnly?: boolean
+}): Promise<number> {
+  let query = supabaseAdmin
     .from('monitored_programs')
     .select('*', { count: 'exact', head: true })
+
+  if (options?.activeOnly) {
+    query = query.eq('is_active', true)
+  }
+
+  const { count, error } = await query
 
   if (error) {
     console.error('Error counting programs:', error)

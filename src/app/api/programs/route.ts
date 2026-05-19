@@ -10,6 +10,8 @@ export async function GET(request: NextRequest) {
     const searchParams = request.nextUrl.searchParams
     const limit = searchParams.get('limit')
     const offset = searchParams.get('offset')
+    const user = await getAuthUser(request)
+    const activeOnly = !user?.isAdmin
 
     // Validate and parse pagination params
     const parsedLimit = limit ? parseInt(limit, 10) : undefined
@@ -34,9 +36,10 @@ export async function GET(request: NextRequest) {
     const [programs, totalCount] = await Promise.all([
       getAllPrograms({
         limit: parsedLimit,
-        offset: parsedOffset
+        offset: parsedOffset,
+        activeOnly
       }),
-      getProgramCount()
+      getProgramCount({ activeOnly })
     ])
 
     return NextResponse.json({

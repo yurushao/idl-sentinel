@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getProgramById, updateProgram, deleteProgram } from '@/lib/db/programs'
 import { getAuthUser } from '@/lib/auth/middleware'
+import type { MonitoredProgram } from '@/lib/supabase'
 
 export async function GET(
   request: NextRequest,
@@ -66,7 +67,7 @@ export async function PUT(
     const { name, description, is_active } = body
 
     // Validation
-    const updates: any = {}
+    const updates: Partial<Pick<MonitoredProgram, 'name' | 'description' | 'is_active'>> = {}
 
     if (name !== undefined) {
       if (typeof name !== 'string' || name.length < 2 || name.length > 100) {
@@ -89,6 +90,13 @@ export async function PUT(
     }
 
     if (is_active !== undefined) {
+      if (!user.isAdmin) {
+        return NextResponse.json(
+          { error: 'Only administrators can change program visibility' },
+          { status: 403 }
+        )
+      }
+
       if (typeof is_active !== 'boolean') {
         return NextResponse.json(
           { error: 'is_active must be a boolean' },

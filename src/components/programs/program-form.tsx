@@ -32,6 +32,7 @@ interface ProgramFormData {
   program_id: string;
   name: string;
   description: string;
+  is_active: boolean;
 }
 
 interface ProgramFormProps {
@@ -39,6 +40,8 @@ interface ProgramFormProps {
   programId?: string;
   isEdit?: boolean;
 }
+
+type ProgramFormErrors = Partial<Record<"program_id" | "name" | "description", string>>;
 
 interface ProgramPreview {
   already_monitored: boolean;
@@ -91,15 +94,16 @@ export function ProgramForm({ initialData, programId, isEdit = false }: ProgramF
     program_id: initialData?.program_id || "",
     name: initialData?.name || "",
     description: initialData?.description || "",
+    is_active: initialData?.is_active ?? true,
   });
-  const [errors, setErrors] = useState<Partial<ProgramFormData>>({});
+  const [errors, setErrors] = useState<ProgramFormErrors>({});
   const [loading, setLoading] = useState(false);
   const [preview, setPreview] = useState<ProgramPreview | null>(null);
   const [message, setMessage] = useState<string | null>(null);
   const [transactionSignature, setTransactionSignature] = useState<string | null>(null);
 
   const validateProgramId = (): boolean => {
-    const newErrors: Partial<ProgramFormData> = {};
+    const newErrors: ProgramFormErrors = {};
 
     if (!formData.program_id.trim()) {
       newErrors.program_id = "Program ID is required";
@@ -112,7 +116,7 @@ export function ProgramForm({ initialData, programId, isEdit = false }: ProgramF
   };
 
   const validateFullForm = (): boolean => {
-    const newErrors: Partial<ProgramFormData> = {};
+    const newErrors: ProgramFormErrors = {};
 
     if (!formData.program_id.trim()) {
       newErrors.program_id = "Program ID is required";
@@ -155,12 +159,20 @@ export function ProgramForm({ initialData, programId, isEdit = false }: ProgramF
           program_id: formData.program_id.trim(),
           name: formData.name.trim(),
           description: formData.description.trim(),
+          ...(isEdit && isAdmin ? { is_active: formData.is_active } : {}),
         }),
       });
 
       const data = await response.json();
 
       if (response.ok) {
+        await Promise.all([
+          queryClient.invalidateQueries({ queryKey: queryKeys.programs }),
+          queryClient.invalidateQueries({ queryKey: queryKeys.stats }),
+          ...(programId
+            ? [queryClient.invalidateQueries({ queryKey: queryKeys.programDetail(programId) })]
+            : []),
+        ]);
         router.push("/programs");
       } else if (data.error?.includes("already exists")) {
         setErrors({ program_id: "A program with this ID is already being monitored" });
@@ -369,7 +381,7 @@ export function ProgramForm({ initialData, programId, isEdit = false }: ProgramF
     await activateWithPayment();
   };
 
-  const handleInputChange = (field: keyof ProgramFormData, value: string) => {
+  const handleInputChange = (field: "program_id" | "name" | "description", value: string) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
     setMessage(null);
     if (field === "program_id") {
@@ -379,6 +391,11 @@ export function ProgramForm({ initialData, programId, isEdit = false }: ProgramF
     if (errors[field]) {
       setErrors((prev) => ({ ...prev, [field]: undefined }));
     }
+  };
+
+  const handleActiveChange = () => {
+    setFormData((prev) => ({ ...prev, is_active: !prev.is_active }));
+    setMessage(null);
   };
 
   const submitLabel = (() => {
@@ -528,6 +545,40 @@ export function ProgramForm({ initialData, programId, isEdit = false }: ProgramF
                     Optional description to help identify this program
                   </p>
                 </div>
+
+                {isEdit && isAdmin && (
+                  <div className="rounded-md border p-4">
+                    <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                      <div className="min-w-0">
+                        <label id="program-visibility-label" className="text-sm font-medium">
+                          Visible and monitored
+                        </label>
+                        <p className="mt-1 text-xs text-muted-foreground">
+                          {formData.is_active
+                            ? "This program appears in public program lists and is checked by IDL monitoring."
+                            : "This program is hidden from public program lists and skipped by IDL monitoring."}
+                        </p>
+                      </div>
+                      <button
+                        type="button"
+                        role="switch"
+                        aria-checked={formData.is_active}
+                        aria-labelledby="program-visibility-label"
+                        onClick={handleActiveChange}
+                        disabled={loading}
+                        className={`relative inline-flex h-6 w-11 flex-shrink-0 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 ${
+                          formData.is_active ? "bg-primary" : "bg-muted-foreground/30"
+                        }`}
+                      >
+                        <span
+                          className={`inline-block h-5 w-5 transform rounded-full bg-background shadow transition-transform ${
+                            formData.is_active ? "translate-x-5" : "translate-x-0.5"
+                          }`}
+                        />
+                      </button>
+                    </div>
+                  </div>
+                )}
               </>
             )}
 

@@ -11,12 +11,13 @@ import { Plus, Search, Eye, Edit, Trash2 } from "lucide-react";
 import { useAuth } from "@/lib/auth/auth-context";
 import { AddToWatchlistButton } from "@/components/watchlist/add-to-watchlist-button";
 import { usePrograms, useDeleteProgram } from "@/hooks/use-programs";
+import { cn } from "@/lib/utils";
 
 export function ProgramsList() {
   const { isAdmin, userId } = useAuth();
   const { data, isLoading } = usePrograms();
   const deleteMutation = useDeleteProgram();
-  const programs = data?.programs || [];
+  const programs = useMemo(() => data?.programs || [], [data?.programs]);
 
   const [searchTerm, setSearchTerm] = useState("");
   const [debouncedSearchTerm, setDebouncedSearchTerm] = useState("");
@@ -138,19 +139,38 @@ export function ProgramsList() {
             const canManageProgram = isAdmin || isProgramOwner;
 
             return (
-              <Card key={program.id}>
+              <Card
+                key={program.id}
+                className={cn(
+                  !program.is_active && "border-dashed bg-muted/30 opacity-75"
+                )}
+              >
                 <CardContent className="p-4 sm:p-6">
                   <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
                     <div className="min-w-0 flex-1">
                       <div className="mb-2 flex flex-wrap items-center gap-2">
-                        <h3 className="text-lg font-semibold">{program.name}</h3>
+                        <h3
+                          className={cn(
+                            "text-lg font-semibold",
+                            !program.is_active && "text-muted-foreground"
+                          )}
+                        >
+                          {program.name}
+                        </h3>
                         <Badge variant={program.is_active ? "default" : "secondary"}>
-                          {program.is_active ? "Active" : "Inactive"}
+                          {program.is_active ? "Active" : "Hidden"}
                         </Badge>
                       </div>
 
                       {program.description && (
-                        <p className="mb-3 text-muted-foreground">{program.description}</p>
+                        <p
+                          className={cn(
+                            "mb-3 text-muted-foreground",
+                            !program.is_active && "line-through decoration-muted-foreground/40"
+                          )}
+                        >
+                          {program.description}
+                        </p>
                       )}
 
                       <div className="space-y-1">
@@ -168,12 +188,14 @@ export function ProgramsList() {
                     </div>
 
                     <div className="flex flex-wrap items-center gap-2 sm:ml-4">
-                      <AddToWatchlistButton
-                        programId={program.program_id}
-                        programDbId={program.id}
-                        size="sm"
-                        variant="outline"
-                      />
+                      {program.is_active && (
+                        <AddToWatchlistButton
+                          programId={program.program_id}
+                          programDbId={program.id}
+                          size="sm"
+                          variant="outline"
+                        />
+                      )}
                       <Link href={`/programs/${program.id}`}>
                         <Button variant="outline" size="sm" className="flex items-center space-x-1">
                           <Eye className="h-3 w-3" />

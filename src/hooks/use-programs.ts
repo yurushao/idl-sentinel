@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { queryKeys } from './query-keys'
 import type { MonitoredProgram } from '@/lib/supabase'
+import { useAuth } from '@/lib/auth/auth-context'
 
 interface ProgramsResponse {
   programs: MonitoredProgram[]
@@ -39,13 +40,16 @@ interface ProgramChangesResponse {
 }
 
 export function usePrograms() {
+  const { isAdmin, isLoading: authLoading } = useAuth()
+
   return useQuery<ProgramsResponse>({
-    queryKey: queryKeys.programsList(),
+    queryKey: [...queryKeys.programsList(), { includeInactive: isAdmin }],
     queryFn: async () => {
       const response = await fetch('/api/programs')
       if (!response.ok) throw new Error('Failed to fetch programs')
       return response.json()
     },
+    enabled: !authLoading,
   })
 }
 

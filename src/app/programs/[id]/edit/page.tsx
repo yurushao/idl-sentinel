@@ -1,7 +1,6 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { useRouter } from 'next/navigation'
 import { Layout } from '@/components/layout/layout'
 import { ProgramForm } from '@/components/programs/program-form'
 import { Alert, AlertDescription } from '@/components/ui/alert'
@@ -23,7 +22,6 @@ interface ProgramData {
 }
 
 export default function EditProgramPage({ params }: EditProgramPageProps) {
-  const router = useRouter()
   const [programId, setProgramId] = useState<string>('')
   const [program, setProgram] = useState<ProgramData | null>(null)
   const [loading, setLoading] = useState(true)
@@ -106,6 +104,7 @@ export default function EditProgramPage({ params }: EditProgramPageProps) {
             program_id: program.program_id,
             name: program.name,
             description: program.description || '',
+            is_active: program.is_active,
           }}
           programId={program.id}
           isEdit={true}
