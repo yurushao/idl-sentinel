@@ -31,8 +31,14 @@ import {
 import { Light as SyntaxHighlighter } from "react-syntax-highlighter";
 import json from "react-syntax-highlighter/dist/esm/languages/hljs/json";
 import { github } from "react-syntax-highlighter/dist/esm/styles/hljs";
-import { useProgram, useProgramSnapshots, useProgramChanges, useDeleteProgram } from "@/hooks/use-programs";
+import {
+  useProgram,
+  useProgramSnapshots,
+  useProgramChanges,
+  useDeleteProgram,
+} from "@/hooks/use-programs";
 import { useUserSettings } from "@/hooks/use-user-settings";
+import { useAuth } from "@/lib/auth/auth-context";
 
 // Register JSON language
 SyntaxHighlighter.registerLanguage("json", json);
@@ -53,16 +59,25 @@ export function ProgramDetail({ programId }: ProgramDetailProps) {
   const router = useRouter();
   const [viewingSnapshot, setViewingSnapshot] = useState<Snapshot | null>(null);
 
-  const { data: programData, isLoading: programLoading, isError: programError, error: programErrorObj, refetch: refetchProgram } = useProgram(programId);
+  const {
+    data: programData,
+    isLoading: programLoading,
+    isError: programError,
+    error: programErrorObj,
+    refetch: refetchProgram,
+  } = useProgram(programId);
   const { data: snapshotsData, refetch: refetchSnapshots } = useProgramSnapshots(programId);
   const { data: changesData, refetch: refetchChanges } = useProgramChanges(programId);
   const { data: settingsData } = useUserSettings({ enabled: true });
+  const { isAdmin, userId } = useAuth();
   const deleteMutation = useDeleteProgram();
 
   const program = programData?.program;
   const snapshots = snapshotsData?.snapshots || [];
   const changes = changesData?.changes || [];
-  const preferredExplorer: SolanaExplorer = settingsData?.user?.preferred_explorer || "explorer.solana.com";
+  const preferredExplorer: SolanaExplorer =
+    settingsData?.user?.preferred_explorer || "explorer.solana.com";
+  const canManageProgram = !!program && (isAdmin || program.owner_id === userId);
 
   const [refreshing, setRefreshing] = useState(false);
 
@@ -159,7 +174,9 @@ export function ProgramDetail({ programId }: ProgramDetailProps) {
 
         <Alert>
           <AlertCircle className="h-4 w-4" />
-          <AlertDescription>{programErrorObj instanceof Error ? programErrorObj.message : "Failed to load program"}</AlertDescription>
+          <AlertDescription>
+            {programErrorObj instanceof Error ? programErrorObj.message : "Failed to load program"}
+          </AlertDescription>
         </Alert>
       </div>
     );
@@ -186,22 +203,26 @@ export function ProgramDetail({ programId }: ProgramDetailProps) {
             Refresh
           </Button>
 
-          <Button variant="outline" size="sm" asChild>
-            <Link href={`/programs/${programId}/edit`}>
-              <Edit className="mr-2 h-4 w-4" />
-              Edit
-            </Link>
-          </Button>
+          {canManageProgram && (
+            <>
+              <Button variant="outline" size="sm" asChild>
+                <Link href={`/programs/${programId}/edit`}>
+                  <Edit className="mr-2 h-4 w-4" />
+                  Edit
+                </Link>
+              </Button>
 
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={handleDelete}
-            className="text-red-600 hover:text-red-700"
-          >
-            <Trash2 className="mr-2 h-4 w-4" />
-            Delete
-          </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleDelete}
+                className="text-red-600 hover:text-red-700"
+              >
+                <Trash2 className="mr-2 h-4 w-4" />
+                Delete
+              </Button>
+            </>
+          )}
         </div>
       </div>
 

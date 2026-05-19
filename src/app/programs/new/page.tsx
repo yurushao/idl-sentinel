@@ -1,5 +1,5 @@
-import { Layout } from '@/components/layout/layout'
-import { ProgramForm } from '@/components/programs/program-form'
+import { Layout } from "@/components/layout/layout";
+import { ProgramForm } from "@/components/programs/program-form";
 
 export default function NewProgramPage() {
   return (
@@ -8,12 +8,13 @@ export default function NewProgramPage() {
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Add New Program</h1>
           <p className="text-muted-foreground">
-            Start monitoring a new Solana program for IDL changes
+            Preview the on-chain IDL, then activate monitoring for 5 USDC if it is not already
+            monitored
           </p>
         </div>
-        
+
         <ProgramForm />
       </div>
     </Layout>
-  )
+  );
 }

@@ -14,6 +14,7 @@
   "dependencies": {
     "@coral-xyz/anchor": "^0.29.0",
     "@radix-ui/react-slot": "^1.2.3",
+    "@solana/spl-token": "^0.4.14",
     "@solana/wallet-adapter-base": "^0.9.27",
     "@solana/wallet-adapter-react": "^0.15.39",
     "@solana/wallet-adapter-react-ui": "^0.9.39",
@@ -22,8 +23,8 @@
     "@supabase/supabase-js": "^2.38.4",
     "@tanstack/react-query": "^5.8.4",
     "@types/react-syntax-highlighter": "^15.5.13",
-    "@vercel/analytics": "^1.5.0",
     "bs58": "^5.0.0",
+    "buffer": "^6.0.3",
     "class-variance-authority": "^0.7.0",
     "clsx": "^2.0.0",
     "jose": "^6.1.0",

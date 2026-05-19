@@ -39,6 +39,15 @@ npx supabase db pull
 npx supabase db push
 ```
 
+### Deployment Environment
+- Do not commit platform project IDs, org IDs, local deployment metadata, or account-specific deployment values.
+- Required payment env vars:
+  - `PROGRAM_ACTIVATION_FEE_USDC`
+  - `SOLANA_USDC_MINT`
+  - `PAYMENT_TREASURY_WALLET`
+  - `PAYMENT_TREASURY_USDC_ACCOUNT`
+- Redeploy or restart production after changing deployment env vars.
+
 ### Common SQL Operations
 ```bash
 # Set admin user (run in Supabase SQL Editor)
@@ -50,7 +59,7 @@ UPDATE users SET is_admin = true WHERE wallet_address = 'YOUR_WALLET';
 ### Core Monitoring Flow
 
 1. **Cron Job** ([/api/cron/monitor-idls/route.ts](src/app/api/cron/monitor-idls/route.ts))
-   - Runs every 15 minutes (configured in [vercel.json](vercel.json))
+   - Should run every 15 minutes via the deployment scheduler
    - Protected by `CRON_SECRET` environment variable
    - Orchestrates: monitoring → change detection → notifications
 
@@ -198,7 +207,7 @@ See [supabase/README.md](supabase/README.md) for detailed instructions.
 
 ## Cron Job Configuration
 
-The monitoring cron job is configured in [vercel.json](vercel.json) to run every 15 minutes on Vercel. For local testing:
+Configure your deployment scheduler to call the monitoring endpoint every 15 minutes. For local testing:
 
 ```bash
 # Test the monitoring endpoint manually

@@ -152,6 +152,44 @@ CREATE INDEX IF NOT EXISTS idx_user_watchlist_program ON user_watchlist(program_
 COMMENT ON TABLE user_watchlist IS 'Programs that users are watching for notifications';
 
 -- =====================================================
+-- PROGRAM ACTIVATION PAYMENTS TABLE
+-- =====================================================
+-- One-time USDC payments for self-serve program activation
+CREATE TABLE IF NOT EXISTS program_activation_payments (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    payer_wallet TEXT NOT NULL,
+    program_address TEXT NOT NULL,
+    program_name TEXT NOT NULL,
+    description TEXT,
+    amount_usdc NUMERIC(12, 6) NOT NULL DEFAULT 5.000000,
+    amount_atomic BIGINT NOT NULL DEFAULT 5000000,
+    usdc_mint TEXT NOT NULL,
+    treasury_token_account TEXT NOT NULL,
+    payment_reference TEXT NOT NULL UNIQUE,
+    status TEXT NOT NULL DEFAULT 'pending' CHECK (status IN ('pending', 'confirmed', 'consumed', 'expired', 'failed')),
+    payment_signature TEXT UNIQUE,
+    error_message TEXT,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    expires_at TIMESTAMPTZ NOT NULL,
+    confirmed_at TIMESTAMPTZ,
+    consumed_at TIMESTAMPTZ,
+    updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- Indexes for program_activation_payments table
+CREATE INDEX IF NOT EXISTS idx_program_activation_payments_user ON program_activation_payments(user_id, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_program_activation_payments_program ON program_activation_payments(program_address);
+CREATE INDEX IF NOT EXISTS idx_program_activation_payments_status ON program_activation_payments(status, expires_at);
+CREATE INDEX IF NOT EXISTS idx_program_activation_payments_signature ON program_activation_payments(payment_signature)
+    WHERE payment_signature IS NOT NULL;
+
+-- Comments
+COMMENT ON TABLE program_activation_payments IS 'One-time USDC payment intents for self-serve monitored program activation';
+COMMENT ON COLUMN program_activation_payments.payment_reference IS 'Random public key included in the payment memo instruction for transaction matching';
+COMMENT ON COLUMN program_activation_payments.amount_atomic IS 'USDC amount in base units using 6 decimals';
+
+-- =====================================================
 -- TELEGRAM CONNECTION TOKENS TABLE
 -- =====================================================
 -- Temporary tokens for Telegram bot authentication
@@ -323,6 +361,13 @@ CREATE TRIGGER update_monitored_programs_updated_at
     FOR EACH ROW
     EXECUTE FUNCTION update_updated_at_column();
 
+-- Apply trigger to program_activation_payments
+DROP TRIGGER IF EXISTS update_program_activation_payments_updated_at ON program_activation_payments;
+CREATE TRIGGER update_program_activation_payments_updated_at
+    BEFORE UPDATE ON program_activation_payments
+    FOR EACH ROW
+    EXECUTE FUNCTION update_updated_at_column();
+
 -- =====================================================
 -- ROW LEVEL SECURITY (RLS) POLICIES
 -- =====================================================
@@ -333,6 +378,7 @@ ALTER TABLE monitored_programs ENABLE ROW LEVEL SECURITY;
 ALTER TABLE idl_snapshots ENABLE ROW LEVEL SECURITY;
 ALTER TABLE idl_changes ENABLE ROW LEVEL SECURITY;
 ALTER TABLE user_watchlist ENABLE ROW LEVEL SECURITY;
+ALTER TABLE program_activation_payments ENABLE ROW LEVEL SECURITY;
 ALTER TABLE telegram_connection_tokens ENABLE ROW LEVEL SECURITY;
 ALTER TABLE monitoring_logs ENABLE ROW LEVEL SECURITY;
 
@@ -450,6 +496,16 @@ CREATE POLICY "Enable delete for own watchlist" ON user_watchlist
     );
 
 -- =====================================================
+-- PROGRAM ACTIVATION PAYMENTS TABLE POLICIES
+-- =====================================================
+DROP POLICY IF EXISTS "Service role full access" ON program_activation_payments;
+
+-- Payment records are created and verified only by API routes using the service role.
+CREATE POLICY "Service role full access" ON program_activation_payments
+    FOR ALL
+    USING (auth.role() = 'service_role');
+
+-- =====================================================
 -- TELEGRAM CONNECTION TOKENS TABLE POLICIES
 -- =====================================================
 DROP POLICY IF EXISTS "Service role full access" ON telegram_connection_tokens;
@@ -481,6 +537,7 @@ GRANT ALL PRIVILEGES ON monitored_programs TO anon, authenticated;
 GRANT ALL PRIVILEGES ON idl_snapshots TO anon, authenticated;
 GRANT ALL PRIVILEGES ON idl_changes TO anon, authenticated;
 GRANT ALL PRIVILEGES ON user_watchlist TO anon, authenticated;
+GRANT ALL PRIVILEGES ON program_activation_payments TO anon, authenticated;
 GRANT ALL PRIVILEGES ON telegram_connection_tokens TO anon, authenticated;
 GRANT ALL PRIVILEGES ON monitoring_logs TO anon, authenticated;
 

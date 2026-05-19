@@ -56,9 +56,10 @@ Track modifications to Solana program IDLs in real-time and receive notification
 
 - **View** all monitored programs
 - **Subscribe** to programs of interest via watchlist
+- **Add** new programs through the self-serve 5 USDC activation flow
 - **Receive notifications** for watched programs only
 - Configure personal Slack/Telegram notification settings
-- Cannot add or modify programs (admin-only)
+- Can edit/delete programs they activated
 
 ## Notifications
 
