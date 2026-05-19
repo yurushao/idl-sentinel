@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabase'
 import { consumeConnectionToken } from '@/lib/telegram/connection-tokens'
+import { fetchWithTimeout } from '@/lib/http'
+
+const TELEGRAM_API_TIMEOUT_MS = 10_000
 
 interface TelegramUpdate {
   update_id: number
@@ -159,7 +162,7 @@ async function sendTelegramMessage(botToken: string, chatId: number, text: strin
   try {
     const url = `https://api.telegram.org/bot${botToken}/sendMessage`
 
-    const response = await fetch(url, {
+    const response = await fetchWithTimeout(url, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -169,7 +172,8 @@ async function sendTelegramMessage(botToken: string, chatId: number, text: strin
         text: text,
         parse_mode: 'Markdown',
         disable_web_page_preview: true
-      })
+      }),
+      timeoutMs: TELEGRAM_API_TIMEOUT_MS
     })
 
     if (!response.ok) {

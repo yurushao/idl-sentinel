@@ -1,5 +1,8 @@
 import { supabaseAdmin } from '../supabase'
 import type { IdlChange } from '../supabase'
+import { fetchWithTimeout } from '../http'
+
+const TELEGRAM_API_TIMEOUT_MS = 10_000
 
 export interface TelegramConfig {
   botToken: string
@@ -39,7 +42,7 @@ export async function sendTelegramNotification(
   try {
     const url = `https://api.telegram.org/bot${config.botToken}/sendMessage`
     
-    const response = await fetch(url, {
+    const response = await fetchWithTimeout(url, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -49,7 +52,8 @@ export async function sendTelegramNotification(
         text: message,
         parse_mode: 'Markdown',
         disable_web_page_preview: true
-      })
+      }),
+      timeoutMs: TELEGRAM_API_TIMEOUT_MS
     })
 
     if (!response.ok) {

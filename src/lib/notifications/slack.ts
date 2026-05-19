@@ -6,11 +6,13 @@ import {
   markChangesChannelNotified,
   recordNotificationDelivery
 } from './delivery'
+import { fetchWithTimeout } from '../http'
 
 const NOTIFICATION_CHANGE_LIMIT = 250
 const PROGRAM_CONCURRENCY = 2
 const WATCHER_CONCURRENCY = 5
 const MAX_DELIVERY_ATTEMPTS_PER_RUN = 500
+const SLACK_WEBHOOK_TIMEOUT_MS = 10_000
 
 export interface SlackWebhookConfig {
   webhookUrl: string
@@ -26,12 +28,13 @@ export async function sendSlackNotification(
   message: any
 ): Promise<boolean> {
   try {
-    const response = await fetch(webhookUrl, {
+    const response = await fetchWithTimeout(webhookUrl, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify(message)
+      body: JSON.stringify(message),
+      timeoutMs: SLACK_WEBHOOK_TIMEOUT_MS
     })
 
     if (!response.ok) {

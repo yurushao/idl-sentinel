@@ -1,6 +1,7 @@
-import { Connection, PublicKey, AccountInfo } from "@solana/web3.js";
+import { Connection, PublicKey, AccountInfo, type ConnectionConfig } from "@solana/web3.js";
 import { inflate, ungzip } from "pako";
 import bs58 from "bs58";
+import { fetchWithTimeout } from "../http";
 
 export interface IdlAccount {
   authority: PublicKey;
@@ -74,6 +75,8 @@ const PROGRAM_METADATA_IDL_SEED = "idl";
 const PROGRAM_METADATA_SEED_LENGTH = 16;
 const PROGRAM_METADATA_HEADER_LENGTH = 96;
 const PROGRAM_METADATA_DISCRIMINATOR = 2;
+const SOLANA_RPC_TIMEOUT_MS = 15_000;
+const PROGRAM_METADATA_URL_TIMEOUT_MS = 10_000;
 
 enum MetadataEncoding {
   None = 0,
@@ -405,7 +408,9 @@ async function unpackProgramMetadataContent(
 
     case MetadataDataSource.Url: {
       const url = decodeProgramMetadataData(metadata.data, metadata);
-      const response = await fetch(url);
+      const response = await fetchWithTimeout(url, {
+        timeoutMs: PROGRAM_METADATA_URL_TIMEOUT_MS,
+      });
       if (!response.ok) {
         throw new Error(`Failed to fetch Program Metadata URL ${url}: ${response.status}`);
       }
@@ -557,5 +562,14 @@ export function validateIdl(idl: any): idl is SolanaIdl {
  */
 export function createSolanaConnection(rpcUrl?: string): Connection {
   const url = rpcUrl || process.env.SOLANA_RPC_URL || "https://api.mainnet-beta.solana.com";
-  return new Connection(url, "confirmed");
+  const config: ConnectionConfig = {
+    commitment: "confirmed",
+    fetch: (input, init) =>
+      fetchWithTimeout(input, {
+        ...(init || {}),
+        timeoutMs: SOLANA_RPC_TIMEOUT_MS,
+      }),
+  };
+
+  return new Connection(url, config);
 }

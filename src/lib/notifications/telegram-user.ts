@@ -6,9 +6,11 @@ import {
   markChangesChannelNotified,
   recordNotificationDelivery
 } from './delivery'
+import { fetchWithTimeout } from '../http'
 
 const NOTIFICATION_CHANGE_LIMIT = 250
 const MAX_DELIVERY_ATTEMPTS_PER_RUN = 500
+const TELEGRAM_API_TIMEOUT_MS = 10_000
 
 export interface TelegramUserConfig {
   userId: string
@@ -33,7 +35,7 @@ export async function sendTelegramUserNotification(
 
     const url = `https://api.telegram.org/bot${botToken}/sendMessage`
 
-    const response = await fetch(url, {
+    const response = await fetchWithTimeout(url, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -43,7 +45,8 @@ export async function sendTelegramUserNotification(
         text: message,
         parse_mode: 'Markdown',
         disable_web_page_preview: true
-      })
+      }),
+      timeoutMs: TELEGRAM_API_TIMEOUT_MS
     })
 
     if (!response.ok) {
@@ -355,7 +358,7 @@ export async function testTelegramConfig(chatId: string): Promise<boolean> {
 
     const url = `https://api.telegram.org/bot${botToken}/sendMessage`
 
-    const response = await fetch(url, {
+    const response = await fetchWithTimeout(url, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -365,7 +368,8 @@ export async function testTelegramConfig(chatId: string): Promise<boolean> {
         text: testMessage,
         parse_mode: 'Markdown',
         disable_web_page_preview: true
-      })
+      }),
+      timeoutMs: TELEGRAM_API_TIMEOUT_MS
     })
 
     return response.ok
