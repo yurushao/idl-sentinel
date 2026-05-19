@@ -6,6 +6,7 @@ import Link from "next/link";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { CopyButton } from "@/components/ui/copy-button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import {
@@ -19,7 +20,6 @@ import {
   Edit,
   Trash2,
   RefreshCw,
-  Copy,
   ExternalLink,
   Clock,
   Activity,
@@ -47,7 +47,7 @@ interface Snapshot {
   id: string;
   program_id: string;
   idl_hash: string;
-  idl_content: any;
+  idl_content: unknown;
   fetched_at: string;
 }
 
@@ -98,10 +98,6 @@ export function ProgramDetail({ programId }: ProgramDetailProps) {
     } catch (error) {
       alert(error instanceof Error ? error.message : "Failed to delete program");
     }
-  };
-
-  const copyToClipboard = (text: string) => {
-    navigator.clipboard.writeText(text);
   };
 
   const formatHash = (hash: string) => {
@@ -261,13 +257,13 @@ export function ProgramDetail({ programId }: ProgramDetailProps) {
                 <code className="break-all rounded bg-muted px-2 py-1 text-sm">
                   {program.program_id}
                 </code>
-                <Button
+                <CopyButton
                   variant="ghost"
                   size="sm"
-                  onClick={() => copyToClipboard(program.program_id)}
-                >
-                  <Copy className="h-4 w-4" />
-                </Button>
+                  value={program.program_id}
+                  copyLabel="Copy program ID"
+                  copiedLabel="Program ID copied"
+                />
                 <Button variant="ghost" size="sm" asChild>
                   <a
                     href={getExplorerUrl(program.program_id, preferredExplorer)}
@@ -345,14 +341,13 @@ export function ProgramDetail({ programId }: ProgramDetailProps) {
                       >
                         <Download className="h-4 w-4" />
                       </Button>
-                      <Button
+                      <CopyButton
                         variant="ghost"
                         size="sm"
-                        onClick={() => copyToClipboard(snapshot.idl_hash)}
-                        title="Copy hash"
-                      >
-                        <Copy className="h-4 w-4" />
-                      </Button>
+                        value={snapshot.idl_hash}
+                        copyLabel="Copy hash"
+                        copiedLabel="Hash copied"
+                      />
                     </div>
                   </div>
                 ))}
