@@ -5,7 +5,6 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { PublicKey, Transaction, TransactionInstruction } from "@solana/web3.js";
 import { useConnection, useWallet } from "@solana/wallet-adapter-react";
-import { createTransferCheckedInstruction, getAssociatedTokenAddressSync } from "@solana/spl-token";
 import { Buffer } from "buffer";
 import { useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -13,6 +12,10 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { isValidProgramId } from "@/lib/utils";
+import {
+  createTransferCheckedInstruction,
+  getAssociatedTokenAddressSync,
+} from "@/lib/solana/token";
 import { useAuth } from "@/lib/auth/auth-context";
 import { queryKeys } from "@/hooks/query-keys";
 import {
